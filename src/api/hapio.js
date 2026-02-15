@@ -75,3 +75,29 @@ export async function deleteLocation(id) {
     throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
   }
 }
+
+/**
+ * Updates a location in Hapio (e.g. enabling/disabling it).
+ * 
+ * @param {string} id - The UUID of the location.
+ * @param {Object} data - The partial data to update (e.g. { enabled: true }).
+ * @returns {Promise<Object>} The updated location object.
+ */
+export async function updateLocation(id, data) {
+  const response = await fetch(`${BASE_URL}/locations/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${API_KEY}`,
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+  }
+
+  return await response.json();
+}

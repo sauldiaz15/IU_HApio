@@ -1,4 +1,4 @@
-import { getLocations, deleteLocation } from '../api/hapio.js';
+import { getLocations, deleteLocation, updateLocation } from '../api/hapio.js';
 
 export function renderLocationList(container) {
   container.innerHTML = `
@@ -37,13 +37,21 @@ export function renderLocationList(container) {
           <button class="card-menu-btn">⋮</button>
           <div class="dropdown-menu">
             <div class="dropdown-item delete" data-action="delete">
-              <span>🗑️</span> Eliminar
+               Eliminar
             </div>
           </div>
           <div class="location-name">${loc.name}</div>
           <div class="location-info"><strong>Time Zone:</strong> ${loc.time_zone}</div>
           <div class="location-info"><strong>Strategy:</strong> ${loc.resource_selection_strategy}</div>
-          <div class="location-tag">${loc.enabled ? 'Enabled' : 'Disabled'}</div>
+          
+          <div class="location-status-container">
+            <span class="status-label">${loc.enabled ? 'Enabled' : 'Disabled'}</span>
+            <label class="switch">
+              <input type="checkbox" data-action="toggle-status" ${loc.enabled ? 'checked' : ''}>
+              <span class="slider"></span>
+            </label>
+          </div>
+
           ${loc.id ? `<div class="location-info" style="margin-top: 0.5rem; font-family: monospace; font-size: 0.7rem;">ID: ${loc.id}</div>` : ''}
         </div>
       `).join('');
@@ -95,7 +103,6 @@ export function renderLocationList(container) {
             await deleteLocation(id);
             
             statusEl.innerText = `Localización "${name}" eliminada correctamente.`;
-            // Refresh list
             loadLocations();
           } catch (error) {
             console.error('Delete error:', error);
@@ -103,6 +110,39 @@ export function renderLocationList(container) {
             statusEl.innerText = `Error al eliminar: ${error.message}`;
             statusEl.style.display = 'block';
           }
+        }
+      });
+    });
+
+    // Toggle status actions
+    const toggleInputs = gridEl.querySelectorAll('[data-action="toggle-status"]');
+    toggleInputs.forEach(input => {
+      input.addEventListener('change', async (e) => {
+        const card = input.closest('.location-card');
+        const id = card.dataset.id;
+        const name = card.querySelector('.location-name').innerText;
+        const enabled = input.checked;
+        const label = card.querySelector('.status-label');
+
+        try {
+          // Optimistic UI update
+          label.innerText = enabled ? 'Enabling...' : 'Disabling...';
+          input.disabled = true;
+
+          await updateLocation(id, { enabled });
+          
+          label.innerText = enabled ? 'Enabled' : 'Disabled';
+          input.disabled = false;
+        } catch (error) {
+          console.error('Update status error:', error);
+          // Revert on error
+          input.checked = !enabled;
+          label.innerText = !enabled ? 'Enabled' : 'Disabled';
+          input.disabled = false;
+          
+          statusEl.className = 'status-message error';
+          statusEl.innerText = `Error al actualizar estado de "${name}": ${error.message}`;
+          statusEl.style.display = 'block';
         }
       });
     });

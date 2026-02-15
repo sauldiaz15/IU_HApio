@@ -17,11 +17,11 @@ function renderApp() {
           <div class="menu-header">Localización</div>
           <div class="sub-menu">
             <div class="nav-link active" data-view="list">
-              <span class="nav-link-icon">📋</span>
+              <span class="nav-link-icon">.</span>
               Ver Localizaciones
             </div>
             <div class="nav-link" data-view="create">
-              <span class="nav-link-icon">➕</span>
+              <span class="nav-link-icon">.</span>
               Crear Nueva
             </div>
           </div>

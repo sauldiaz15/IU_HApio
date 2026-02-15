@@ -13,10 +13,7 @@ export function renderLocationForm(container) {
         <div class="form-group">
           <label for="time_zone">Time Zone</label>
           <select id="time_zone" name="time_zone" required>
-            <option value="Europe/Madrid">Europe/Madrid (CET/CEST)</option>
-            <option value="Europe/London">Europe/London (GMT/BST)</option>
-            <option value="America/New_York">America/New_York (EST/EDT)</option>
-            <option value="UTC">UTC</option>
+            <option value="" disabled selected>Loading time zones...</option>
           </select>
         </div>
         
@@ -34,6 +31,29 @@ export function renderLocationForm(container) {
       <div id="status-message" class="status-message"></div>
     </div>
   `;
+
+  // Dynamic Timezone Loading
+  const timeZoneSelect = container.querySelector('#time_zone');
+  try {
+    const timeZones = Intl.supportedValuesOf('timeZone');
+    const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    timeZoneSelect.innerHTML = timeZones.map(tz => 
+      `<option value="${tz}" ${tz === localTimeZone ? 'selected' : ''}>${tz}</option>`
+    ).join('');
+
+    // If local timezone is not in the list (rare), ensure something is selected
+    if (!timeZoneSelect.value && timeZones.length > 0) {
+      timeZoneSelect.value = timeZones[0];
+    }
+  } catch (e) {
+    console.error('Error loading time zones:', e);
+    timeZoneSelect.innerHTML = `
+      <option value="UTC">UTC</option>
+      <option value="Europe/Madrid">Europe/Madrid</option>
+      <option value="America/New_York">America/New_York</option>
+    `;
+  }
 
   const form = container.querySelector('#location-form');
   const statusEl = container.querySelector('#status-message');
