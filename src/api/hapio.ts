@@ -4,6 +4,7 @@
 
 const API_KEY = import.meta.env.VITE_HAPIO_API_KEY;
 const BASE_URL = import.meta.env.VITE_HAPIO_BASE_URL;
+const DEFAULT_TIMEOUT = 10000; // 10 seconds
 
 export type ResourceSelectionStrategy = 'randomize' | 'prioritize' | 'equalize';
 
@@ -34,50 +35,162 @@ export interface Resource extends ResourceData {
     updated_at: string;
 }
 
+export type ServiceType = 'fixed' | 'flexible' | 'day';
+
+export interface ServiceData {
+    name: string;
+    type: ServiceType;
+    duration?: string | null; // ISO 8601 duration
+    price?: string | null;
+    enabled?: boolean;
+    metadata?: any;
+    bookable_interval?: string | null;
+    buffer_time_before?: string | null;
+    buffer_time_after?: string | null;
+    booking_window_start?: string | null;
+    booking_window_end?: string | null;
+    cancelation_threshold?: string | null;
+    min_duration?: string | null;
+    max_duration?: string | null;
+    duration_step?: string | null;
+    default_duration?: string | null;
+    min_days?: number | null;
+    max_days?: number | null;
+    default_days?: number | null;
+    start_time?: string | Record<string, string> | null;
+    end_time?: string | Record<string, string> | null;
+}
+
+export interface Service extends ServiceData {
+    id: string;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface HapioResponse<T> {
     data: T;
     meta?: any;
     links?: any;
 }
 
+interface HapioErrorResponse {
+    message?: string;
+    messages?: Record<string, string>;
+    errors?: Record<string, string[]>;
+}
+
+/**
+ * Custom Error class for Hapio API errors
+ */
+export class HapioError extends Error {
+    constructor(
+        message: string,
+        public status?: number,
+        public details?: HapioErrorResponse
+    ) {
+        super(message);
+        this.name = 'HapioError';
+    }
+}
+
+export interface Project {
+    id: string;
+    name: string;
+}
+
+/**
+ * Fetches the project information from Hapio.
+ */
+export async function getProject(): Promise<HapioResponse<Project>> {
+    const response = await fetchWithTimeout(`${BASE_URL}/project`, {
+        method: 'GET',
+    });
+
+    return await response.json();
+}
+
+/**
+ * Unified fetch wrapper with timeout and enhanced error handling
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+            headers: {
+                'Authorization': `Bearer ${API_KEY}`,
+                'Accept': 'application/json',
+                ...options.headers,
+            },
+        });
+        clearTimeout(id);
+
+        if (!response.ok) {
+            let errorData: HapioErrorResponse = {};
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                // Not a JSON response
+            }
+
+            let errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
+
+            // Handle validation errors (errors object)
+            if (errorData.errors) {
+                const firstError = Object.values(errorData.errors)[0];
+                if (Array.isArray(firstError) && firstError.length > 0) {
+                    errorMessage = firstError[0];
+                }
+            }
+
+            // Handle batch messages (messages object)
+            if (errorData.messages) {
+                errorMessage = Object.values(errorData.messages)[0];
+            }
+
+            throw new HapioError(errorMessage, response.status, errorData);
+        }
+
+        return response;
+    } catch (error: any) {
+        clearTimeout(id);
+        if (error.name === 'AbortError') {
+            throw new HapioError('La solicitud ha tardado demasiado tiempo (Timeout). Por favor, intenta de nuevo.', 408);
+        }
+        if (error instanceof HapioError) {
+            throw error;
+        }
+        // Generic network error
+        throw new HapioError('No se pudo conectar con el servidor. Por favor, verifica tu conexión a internet.', 0);
+    }
+}
+
 /**
  * Creates a new location in Hapio.
  */
 export async function createLocation(locationData: LocationData): Promise<Location> {
-    const response = await fetch(`${BASE_URL}/locations`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/locations`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${API_KEY}`,
-            'Accept': 'application/json',
         },
         body: JSON.stringify(locationData),
     });
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-    }
-
-    return await response.json();
+    const result = await response.json();
+    return result.data || result; // Handle both direct and wrapped response
 }
 
 /**
  * Fetches the list of locations from Hapio.
  */
 export async function getLocations(): Promise<HapioResponse<Location[]>> {
-    const response = await fetch(`${BASE_URL}/locations`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/locations`, {
         method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${API_KEY}`,
-            'Accept': 'application/json',
-        },
     });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-    }
 
     return await response.json();
 }
@@ -86,80 +199,50 @@ export async function getLocations(): Promise<HapioResponse<Location[]>> {
  * Deletes a location from Hapio.
  */
 export async function deleteLocation(id: string): Promise<void> {
-    const response = await fetch(`${BASE_URL}/locations/${id}`, {
+    await fetchWithTimeout(`${BASE_URL}/locations/${id}`, {
         method: 'DELETE',
-        headers: {
-            'Authorization': `Bearer ${API_KEY}`,
-            'Accept': 'application/json',
-        },
     });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-    }
 }
 
 /**
  * Updates a location in Hapio.
  */
 export async function updateLocation(id: string, data: Partial<LocationData> & { enabled?: boolean }): Promise<Location> {
-    const response = await fetch(`${BASE_URL}/locations/${id}`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/locations/${id}`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${API_KEY}`,
-            'Accept': 'application/json',
         },
         body: JSON.stringify(data),
     });
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-    }
-
-    return await response.json();
+    const result = await response.json();
+    return result.data || result;
 }
 
 /**
  * Creates a new resource in Hapio.
  */
 export async function createResource(resourceData: ResourceData): Promise<Resource> {
-    const response = await fetch(`${BASE_URL}/resources`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/resources`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${API_KEY}`,
-            'Accept': 'application/json',
         },
         body: JSON.stringify(resourceData),
     });
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-    }
-
-    return await response.json();
+    const result = await response.json();
+    return result.data || result;
 }
 
 /**
  * Fetches the list of resources from Hapio.
  */
 export async function getResources(): Promise<HapioResponse<Resource[]>> {
-    const response = await fetch(`${BASE_URL}/resources`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/resources`, {
         method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${API_KEY}`,
-            'Accept': 'application/json',
-        },
     });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-    }
 
     return await response.json();
 }
@@ -168,38 +251,75 @@ export async function getResources(): Promise<HapioResponse<Resource[]>> {
  * Updates a resource in Hapio.
  */
 export async function updateResource(id: string, data: Partial<ResourceData>): Promise<Resource> {
-    const response = await fetch(`${BASE_URL}/resources/${id}`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/resources/${id}`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${API_KEY}`,
-            'Accept': 'application/json',
         },
         body: JSON.stringify(data),
     });
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-    }
-
-    return await response.json();
+    const result = await response.json();
+    return result.data || result;
 }
 
 /**
  * Deletes a resource from Hapio.
  */
 export async function deleteResource(id: string): Promise<void> {
-    const response = await fetch(`${BASE_URL}/resources/${id}`, {
+    await fetchWithTimeout(`${BASE_URL}/resources/${id}`, {
         method: 'DELETE',
+    });
+}
+
+/**
+ * Creates a new service in Hapio.
+ */
+export async function createService(serviceData: ServiceData): Promise<Service> {
+    const response = await fetchWithTimeout(`${BASE_URL}/services`, {
+        method: 'POST',
         headers: {
-            'Authorization': `Bearer ${API_KEY}`,
-            'Accept': 'application/json',
+            'Content-Type': 'application/json',
         },
+        body: JSON.stringify(serviceData),
     });
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-    }
+    const result = await response.json();
+    return result.data || result;
+}
+
+/**
+ * Fetches the list of services from Hapio.
+ */
+export async function getServices(): Promise<HapioResponse<Service[]>> {
+    const response = await fetchWithTimeout(`${BASE_URL}/services`, {
+        method: 'GET',
+    });
+
+    return await response.json();
+}
+
+/**
+ * Updates a service in Hapio.
+ */
+export async function updateService(id: string, data: Partial<ServiceData>): Promise<Service> {
+    const response = await fetchWithTimeout(`${BASE_URL}/services/${id}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    return result.data || result;
+}
+
+/**
+ * Deletes a service from Hapio.
+ */
+export async function deleteService(id: string): Promise<void> {
+    await fetchWithTimeout(`${BASE_URL}/services/${id}`, {
+        method: 'DELETE',
+    });
 }

@@ -3,7 +3,10 @@ import { renderLocationForm } from './components/LocationForm'
 import { renderLocationList } from './components/LocationList'
 import { renderResourceList } from './components/ResourceList'
 import { renderResourceForm } from './components/ResourceForm'
+import { renderServiceList } from './components/ServiceList'
+import { renderServiceForm } from './components/ServiceForm'
 import { renderHome } from './components/Home'
+import { getProject } from './api/hapio'
 
 const app = document.querySelector('#app') as HTMLElement;
 
@@ -12,7 +15,10 @@ function renderApp(): void {
     <aside class="sidebar">
       <div class="sidebar-header" data-view="home">
         <div class="sidebar-logo"></div>
-        <span class="sidebar-title">Hapio Portal</span>
+        <div class="sidebar-header-text">
+          <span class="sidebar-title">Hapio Portal</span>
+          <div id="project-info" class="project-info">Cargando...</div>
+        </div>
       </div>
       
       <nav class="sidebar-menu">
@@ -46,6 +52,22 @@ function renderApp(): void {
             <div class="nav-link" data-view="resources-create">
               <span class="nav-link-icon">.</span>
               Crear Nuevo Recurso
+            </div>
+          </div>
+        </div>
+        <div class="menu-item" id="menu-ser">
+          <div class="menu-header">
+            <span>Servicios</span>
+            <span class="menu-arrow">▼</span>
+          </div>
+          <div class="sub-menu">
+            <div class="nav-link" data-view="services-list">
+              <span class="nav-link-icon">.</span>
+              Ver Servicios
+            </div>
+            <div class="nav-link" data-view="services-create">
+              <span class="nav-link-icon">.</span>
+              Nuevo Servicio
             </div>
           </div>
         </div>
@@ -93,6 +115,10 @@ function renderApp(): void {
       renderResourceList(content);
     } else if (viewName === 'resources-create') {
       renderResourceForm(content);
+    } else if (viewName === 'services-list') {
+      renderServiceList(content);
+    } else if (viewName === 'services-create') {
+      renderServiceForm(content);
     } else if (viewName === 'home') {
       renderHome(content);
     } else {
@@ -107,6 +133,22 @@ function renderApp(): void {
 
   // Initial View
   switchView('home');
+
+  // Load project info
+  async function loadProjectInfo() {
+    const projectInfoEl = app.querySelector('#project-info') as HTMLElement;
+    try {
+      const response = await getProject();
+      const project = (response as any).data || response;
+      projectInfoEl.textContent = project.name || `ID: ${project.id}`;
+      projectInfoEl.classList.add('loaded');
+    } catch (error) {
+      console.error('Error fetching project info:', error);
+      projectInfoEl.textContent = 'Proyecto desconocido';
+    }
+  }
+
+  loadProjectInfo();
 }
 
 renderApp();
