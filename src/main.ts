@@ -7,6 +7,10 @@ import { renderServiceList } from './components/ServiceList'
 import { renderServiceForm } from './components/ServiceForm'
 import { renderScheduleForm } from './components/ScheduleForm'
 import { renderScheduleList } from './components/ScheduleList'
+import { renderScheduleBlockForm } from './components/ScheduleBlockForm'
+import { renderScheduleBlockList } from './components/ScheduleBlockList'
+import { renderRecurringBlockForm } from './components/RecurringBlockForm'
+import { renderRecurringBlockList } from './components/RecurringBlockList'
 import { renderHome } from './components/Home'
 import { getProject } from './api/hapio'
 
@@ -83,11 +87,36 @@ function renderApp(): void {
           <div class="sub-menu">
             <div class="nav-link" data-view="schedules-list">
               <span class="nav-link-icon">.</span>
-              Ver Horarios
+              Ver Horarios Semanales
             </div>
             <div class="nav-link" data-view="schedules-create">
               <span class="nav-link-icon">.</span>
-              Crear Horario
+              Crear Horario Semanal
+            </div>
+          </div>
+        </div>
+
+        <div class="menu-item" id="menu-blo">
+          <div class="menu-header">
+            <span>Bloques</span>
+            <span class="menu-arrow">▼</span>
+          </div>
+          <div class="sub-menu">
+            <div class="nav-link" data-view="blocks-list">
+              <span class="nav-link-icon">.</span>
+               Ver Bloques de Horario
+            </div>
+            <div class="nav-link" data-view="blocks-create">
+              <span class="nav-link-icon">.</span>
+               Crear Bloque de Horario
+            </div>
+            <div class="nav-link" data-view="blocks-recurring-list">
+              <span class="nav-link-icon">.</span>
+               Ver Bloques Recurrentes
+            </div>
+            <div class="nav-link" data-view="blocks-create-recurring">
+              <span class="nav-link-icon">.</span>
+               Crear Bloque Recurrente
             </div>
           </div>
         </div>
@@ -143,6 +172,14 @@ function renderApp(): void {
       renderScheduleForm(content);
     } else if (viewName === 'schedules-list') {
       renderScheduleList(content);
+    } else if (viewName === 'blocks-create') {
+      renderScheduleBlockForm(content);
+    } else if (viewName === 'blocks-recurring-list') {
+      renderRecurringBlockList(content);
+    } else if (viewName === 'blocks-create-recurring') {
+      renderRecurringBlockForm(content);
+    } else if (viewName === 'blocks-list') {
+      renderScheduleBlockList(content);
     } else if (viewName === 'home') {
       renderHome(content);
     } else {

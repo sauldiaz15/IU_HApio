@@ -383,6 +383,25 @@ export async function createRecurringScheduleBlock(resourceId: string, scheduleI
 }
 
 /**
+ * Fetches all blocks for a recurring schedule.
+ */
+export async function getRecurringScheduleBlocks(resourceId: string, scheduleId: string): Promise<HapioResponse<RecurringScheduleBlock[]>> {
+    const response = await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/recurring-schedules/${scheduleId}/schedule-blocks`, {
+        method: 'GET',
+    });
+    return await response.json();
+}
+
+/**
+ * Deletes a block from a recurring schedule.
+ */
+export async function deleteRecurringScheduleBlock(resourceId: string, scheduleId: string, blockId: string): Promise<void> {
+    await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/recurring-schedules/${scheduleId}/schedule-blocks/${blockId}`, {
+        method: 'DELETE',
+    });
+}
+
+/**
  * Fetches the list of recurring schedules for a resource.
  */
 export async function getRecurringSchedules(resourceId: string): Promise<HapioResponse<RecurringSchedule[]>> {
@@ -398,6 +417,55 @@ export async function getRecurringSchedules(resourceId: string): Promise<HapioRe
  */
 export async function deleteRecurringSchedule(resourceId: string, scheduleId: string): Promise<void> {
     await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/recurring-schedules/${scheduleId}`, {
+        method: 'DELETE',
+    });
+}
+
+export interface ScheduleBlockData {
+    location_id: string;
+    starts_at: string;
+    ends_at: string;
+    is_available?: boolean;
+}
+
+export interface ScheduleBlock extends ScheduleBlockData {
+    id: string;
+    created_at: string;
+    updated_at: string;
+}
+
+/**
+ * Creates a new schedule block for a resource.
+ */
+export async function createScheduleBlock(resourceId: string, data: ScheduleBlockData): Promise<ScheduleBlock> {
+    const response = await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/schedule-blocks`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    return result.data || result;
+}
+
+/**
+ * Fetches the list of schedule blocks for a resource.
+ */
+export async function getScheduleBlocks(resourceId: string): Promise<HapioResponse<ScheduleBlock[]>> {
+    const response = await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/schedule-blocks`, {
+        method: 'GET',
+    });
+
+    return await response.json();
+}
+
+/**
+ * Deletes a schedule block.
+ */
+export async function deleteScheduleBlock(resourceId: string, blockId: string): Promise<void> {
+    await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/schedule-blocks/${blockId}`, {
         method: 'DELETE',
     });
 }

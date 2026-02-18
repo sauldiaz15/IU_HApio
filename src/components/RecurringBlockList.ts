@@ -1,0 +1,205 @@
+import {
+    getResources,
+    getRecurringSchedules,
+    getRecurringScheduleBlocks,
+    deleteRecurringScheduleBlock,
+    Resource,
+    RecurringSchedule,
+    RecurringScheduleBlock,
+} from '../api/hapio';
+
+const WEEKDAY_LABELS: Record<string, string> = {
+    monday: 'Lunes',
+    tuesday: 'Martes',
+    wednesday: 'Miércoles',
+    thursday: 'Jueves',
+    friday: 'Viernes',
+    saturday: 'Sábado',
+    sunday: 'Domingo',
+};
+
+const WEEKDAY_ORDER: Record<string, number> = {
+    monday: 1, tuesday: 2, wednesday: 3, thursday: 4,
+    friday: 5, saturday: 6, sunday: 7,
+};
+
+export function renderRecurringBlockList(container: HTMLElement): void {
+    container.innerHTML = `
+        <div class="view-header">
+            <h2>Bloques Recurrentes</h2>
+            <p>Visualiza y administra los bloques de horario semanales de cada horario recurrente.</p>
+        </div>
+
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="form-grid">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="rbl-resource">Recurso</label>
+                    <select id="rbl-resource">
+                        <option value="" disabled selected>Cargando recursos…</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="rbl-schedule">Horario Recurrente</label>
+                    <select id="rbl-schedule" disabled>
+                        <option value="" disabled selected>Selecciona un recurso primero</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="rbl-content">
+            <div class="status-message info" style="display: block;">
+                Selecciona un recurso y un horario para ver sus bloques recurrentes.
+            </div>
+        </div>
+    `;
+
+    const resourceSel = container.querySelector('#rbl-resource') as HTMLSelectElement;
+    const scheduleSel = container.querySelector('#rbl-schedule') as HTMLSelectElement;
+    const listContent = container.querySelector('#rbl-content') as HTMLElement;
+
+    // ── Load resources ────────────────────────────────────────────────────────
+    async function loadResources() {
+        try {
+            const res = await getResources();
+            resourceSel.innerHTML = '<option value="" disabled selected>Selecciona un recurso</option>';
+            res.data.forEach((r: Resource) => {
+                const opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = r.name;
+                resourceSel.appendChild(opt);
+            });
+        } catch (err: any) {
+            listContent.innerHTML = `<div class="status-message error" style="display:block;">Error al cargar recursos: ${err.message}</div>`;
+        }
+    }
+
+    // ── Load schedules when resource changes ──────────────────────────────────
+    resourceSel.addEventListener('change', async () => {
+        const resourceId = resourceSel.value;
+        scheduleSel.disabled = true;
+        scheduleSel.innerHTML = '<option value="" disabled selected>Cargando horarios…</option>';
+        listContent.innerHTML = '<div class="status-message info" style="display:block;">Selecciona un horario para ver sus bloques.</div>';
+
+        try {
+            const res = await getRecurringSchedules(resourceId);
+            scheduleSel.innerHTML = '<option value="" disabled selected>Selecciona un horario</option>';
+
+            if (res.data.length === 0) {
+                scheduleSel.innerHTML = '<option value="" disabled selected>Sin horarios recurrentes</option>';
+                listContent.innerHTML = '<div class="status-message info" style="display:block;">Este recurso no tiene horarios recurrentes.</div>';
+                return;
+            }
+
+            res.data.forEach((s: RecurringSchedule) => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = `Horario ${s.id.slice(0, 8)}… (desde ${s.start_date})`;
+                scheduleSel.appendChild(opt);
+            });
+            scheduleSel.disabled = false;
+        } catch (err: any) {
+            listContent.innerHTML = `<div class="status-message error" style="display:block;">Error al cargar horarios: ${err.message}</div>`;
+        }
+    });
+
+    // ── Load blocks when schedule changes ─────────────────────────────────────
+    scheduleSel.addEventListener('change', () => {
+        const resourceId = resourceSel.value;
+        const scheduleId = scheduleSel.value;
+        if (resourceId && scheduleId) {
+            loadBlocks(resourceId, scheduleId);
+        }
+    });
+
+    // ── Load blocks ───────────────────────────────────────────────────────────
+    async function loadBlocks(resourceId: string, scheduleId: string) {
+        listContent.innerHTML = '<div class="loading-spinner"></div>';
+        try {
+            const res = await getRecurringScheduleBlocks(resourceId, scheduleId);
+            const blocks = res.data;
+
+            if (blocks.length === 0) {
+                listContent.innerHTML = `
+                    <div class="card">
+                        <p style="text-align:center; color:#64748b; padding:2rem;">
+                            No hay bloques recurrentes para este horario.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort by weekday order
+            const sorted = [...blocks].sort(
+                (a, b) => (WEEKDAY_ORDER[a.weekday] ?? 9) - (WEEKDAY_ORDER[b.weekday] ?? 9)
+            );
+
+            renderTable(sorted, resourceId, scheduleId);
+        } catch (err: any) {
+            listContent.innerHTML = `<div class="status-message error" style="display:block;">Error al cargar bloques: ${err.message}</div>`;
+        }
+    }
+
+    // ── Render table ──────────────────────────────────────────────────────────
+    function renderTable(blocks: RecurringScheduleBlock[], resourceId: string, scheduleId: string) {
+        listContent.innerHTML = `
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Día</th>
+                            <th>Inicio</th>
+                            <th>Fin</th>
+                            <th class="text-center" style="width:110px;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${blocks.map(block => {
+            const dayLabel = WEEKDAY_LABELS[block.weekday] ?? block.weekday;
+            // Strip seconds for display: "09:00:00" → "09:00"
+            const startDisplay = block.start_time.slice(0, 5);
+            const endDisplay = block.end_time.slice(0, 5);
+            return `
+                                <tr>
+                                    <td>
+                                        <span class="badge badge-info" style="font-size:0.8rem;">${dayLabel}</span>
+                                    </td>
+                                    <td><strong>${startDisplay}</strong></td>
+                                    <td><strong>${endDisplay}</strong></td>
+                                    <td class="text-center">
+                                        <button class="btn btn-danger btn-sm delete-recurring-block"
+                                                data-id="${block.id}">
+                                            Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        // Delete handlers
+        listContent.querySelectorAll<HTMLButtonElement>('.delete-recurring-block').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const blockId = btn.dataset.id!;
+                if (!confirm('¿Eliminar este bloque recurrente?')) return;
+
+                btn.disabled = true;
+                btn.textContent = '…';
+                try {
+                    await deleteRecurringScheduleBlock(resourceId, scheduleId, blockId);
+                    loadBlocks(resourceId, scheduleId);
+                } catch (err: any) {
+                    alert(`Error: ${err.message}`);
+                    btn.disabled = false;
+                    btn.textContent = 'Eliminar';
+                }
+            });
+        });
+    }
+
+    loadResources();
+}
