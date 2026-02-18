@@ -315,11 +315,89 @@ export async function updateService(id: string, data: Partial<ServiceData>): Pro
     return result.data || result;
 }
 
+export interface RecurringScheduleData {
+    location_id: string;
+    start_date: string;
+    end_date?: string | null;
+    interval?: number;
+}
+
+export interface RecurringSchedule extends RecurringScheduleData {
+    id: string;
+    resource_id: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface RecurringScheduleBlockData {
+    weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+    start_time: string;
+    end_time: string;
+}
+
+export interface RecurringScheduleBlock extends RecurringScheduleBlockData {
+    id: string;
+    created_at: string;
+    updated_at: string;
+}
+
 /**
  * Deletes a service from Hapio.
  */
 export async function deleteService(id: string): Promise<void> {
     await fetchWithTimeout(`${BASE_URL}/services/${id}`, {
+        method: 'DELETE',
+    });
+}
+
+/**
+ * Creates a new recurring schedule for a resource.
+ */
+export async function createRecurringSchedule(resourceId: string, data: RecurringScheduleData): Promise<RecurringSchedule> {
+    const response = await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/recurring-schedules`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    return result.data || result;
+}
+
+/**
+ * Creates a block for a recurring schedule.
+ */
+export async function createRecurringScheduleBlock(resourceId: string, scheduleId: string, data: RecurringScheduleBlockData): Promise<RecurringScheduleBlock> {
+    const response = await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/recurring-schedules/${scheduleId}/schedule-blocks`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    return result.data || result;
+}
+
+/**
+ * Fetches the list of recurring schedules for a resource.
+ */
+export async function getRecurringSchedules(resourceId: string): Promise<HapioResponse<RecurringSchedule[]>> {
+    const response = await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/recurring-schedules`, {
+        method: 'GET',
+    });
+
+    return await response.json();
+}
+
+/**
+ * Deletes a recurring schedule.
+ */
+export async function deleteRecurringSchedule(resourceId: string, scheduleId: string): Promise<void> {
+    await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/recurring-schedules/${scheduleId}`, {
         method: 'DELETE',
     });
 }

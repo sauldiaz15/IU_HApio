@@ -810,3 +810,8 @@ tr:hover td {
   padding: 0 1.5rem 1.5rem;
   opacity: 1;
 }
+.required-mark {
+  color: #f87171;
+  margin-left: 2px;
+  font-weight: bold;
+}

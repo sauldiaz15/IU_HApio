@@ -14,6 +14,15 @@ export function renderServiceList(container: HTMLElement): void {
     const listContent = container.querySelector('#service-list-content') as HTMLElement;
 
     /**
+     * Helper to map service types to Spanish labels
+     */
+    const serviceTypeLabels: Record<string, string> = {
+        'fixed': 'Fijo',
+        'flexible': 'Flexible',
+        'day': 'Día completo'
+    };
+
+    /**
      * Helper to parse ISO 8601 duration to human readable format
      */
     function parseISOToHuman(val: string | number | null | undefined): string {
@@ -24,27 +33,34 @@ export function renderServiceList(container: HTMLElement): void {
         }
 
         const iso = val as string;
+        let result = '';
 
         // Handle Days (P[n]D)
         const daysMatch = iso.match(/P(\d+)D/);
-        if (daysMatch && !iso.includes('T')) {
+        if (daysMatch) {
             const days = parseInt(daysMatch[1]);
-            return `${days} d${days !== 1 ? 'ías' : 'ía'}`;
+            result += `${days} d${days !== 1 ? 'ías' : 'ía'} `;
         }
 
         // Handle Time (PT[n]H[n]M)
-        let result = '';
-        const hoursMatch = iso.match(/(\d+)H/);
-        const minutesMatch = iso.match(/(\d+)M/);
+        if (iso.includes('T')) {
+            const hoursMatch = iso.match(/(\d+)H/);
+            const minutesMatch = iso.match(/(\d+)M/);
+            const secondsMatch = iso.match(/(\d+)S/);
 
-        if (hoursMatch) result += `${hoursMatch[1]}h `;
-        if (minutesMatch) result += `${minutesMatch[1]}m`;
+            if (hoursMatch) result += `${hoursMatch[1]}h `;
+            if (minutesMatch) result += `${minutesMatch[1]}m `;
+            if (secondsMatch && result === '') result += `${secondsMatch[1]}s`; // Only show seconds if nothing else
+        }
 
         return result.trim() || iso;
     }
 
     async function loadServices() {
         try {
+            // Show loading spinner when refreshing
+            listContent.innerHTML = '<div class="loading-spinner"></div>';
+
             const response = await getServices();
             const services = response.data;
 
@@ -98,6 +114,9 @@ export function renderServiceList(container: HTMLElement): void {
                 durationInfo = max !== '-' ? `${min} - ${max}` : `Desde ${min}`;
             }
 
+            const typeLabel = serviceTypeLabels[service.type] || service.type;
+            const priceDisplay = service.price ? `$${parseFloat(service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-';
+
             return `
                                 <tr>
                                     <td class="text-center">
@@ -109,9 +128,9 @@ export function renderServiceList(container: HTMLElement): void {
                                         </label>
                                     </td>
                                     <td><strong>${service.name}</strong></td>
-                                    <td><span class="badge badge-info">${service.type}</span></td>
+                                    <td><span class="badge badge-info">${typeLabel}</span></td>
                                     <td>${durationInfo}</td>
-                                    <td>${service.price ? `$${service.price}` : '-'}</td>
+                                    <td>${priceDisplay}</td>
                                     <td class="text-center">
                                         <button class="btn btn-danger btn-sm delete-service" data-id="${service.id}">
                                             Eliminar
@@ -129,7 +148,7 @@ export function renderServiceList(container: HTMLElement): void {
         const toggles = listContent.querySelectorAll('.service-toggle');
         toggles.forEach(toggle => {
             toggle.addEventListener('change', async (e) => {
-                const checkbox = e.target as HTMLInputElement;
+                const checkbox = e.currentTarget as HTMLInputElement;
                 const serviceId = checkbox.dataset.id!;
                 const isEnabled = checkbox.checked;
 
@@ -149,7 +168,7 @@ export function renderServiceList(container: HTMLElement): void {
         const deleteButtons = listContent.querySelectorAll('.delete-service');
         deleteButtons.forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const button = btn as HTMLButtonElement;
+                const button = e.currentTarget as HTMLButtonElement;
                 const serviceId = button.dataset.id!;
 
                 if (confirm('¿Estás seguro de que deseas eliminar este servicio?')) {

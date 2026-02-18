@@ -5,6 +5,8 @@ import { renderResourceList } from './components/ResourceList'
 import { renderResourceForm } from './components/ResourceForm'
 import { renderServiceList } from './components/ServiceList'
 import { renderServiceForm } from './components/ServiceForm'
+import { renderScheduleForm } from './components/ScheduleForm'
+import { renderScheduleList } from './components/ScheduleList'
 import { renderHome } from './components/Home'
 import { getProject } from './api/hapio'
 
@@ -55,6 +57,7 @@ function renderApp(): void {
             </div>
           </div>
         </div>
+
         <div class="menu-item" id="menu-ser">
           <div class="menu-header">
             <span>Servicios</span>
@@ -68,6 +71,23 @@ function renderApp(): void {
             <div class="nav-link" data-view="services-create">
               <span class="nav-link-icon">.</span>
               Nuevo Servicio
+            </div>
+          </div>
+        </div>
+
+        <div class="menu-item" id="menu-sch">
+          <div class="menu-header">
+            <span>Horarios</span>
+            <span class="menu-arrow">▼</span>
+          </div>
+          <div class="sub-menu">
+            <div class="nav-link" data-view="schedules-list">
+              <span class="nav-link-icon">.</span>
+              Ver Horarios
+            </div>
+            <div class="nav-link" data-view="schedules-create">
+              <span class="nav-link-icon">.</span>
+              Crear Horario
             </div>
           </div>
         </div>
@@ -119,6 +139,10 @@ function renderApp(): void {
       renderServiceList(content);
     } else if (viewName === 'services-create') {
       renderServiceForm(content);
+    } else if (viewName === 'schedules-create') {
+      renderScheduleForm(content);
+    } else if (viewName === 'schedules-list') {
+      renderScheduleList(content);
     } else if (viewName === 'home') {
       renderHome(content);
     } else {
