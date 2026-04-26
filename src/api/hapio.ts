@@ -109,6 +109,32 @@ export async function getProject(): Promise<HapioResponse<Project>> {
     return await response.json();
 }
 
+export interface Booking {
+    id: string;
+    resource_id: string;
+    service_id: string;
+    starts_at: string;
+    ends_at: string;
+    status: string;
+    customer?: {
+        name: string;
+        email: string;
+    };
+}
+
+/**
+ * Fetches the list of bookings from Hapio.
+ */
+export async function getBookings(params: Record<string, string> = {}): Promise<HapioResponse<Booking[]>> {
+    const query = new URLSearchParams(params).toString();
+    const url = `${BASE_URL}/bookings${query ? `?${query}` : ''}`;
+    const response = await fetchWithTimeout(url, {
+        method: 'GET',
+    });
+
+    return await response.json();
+}
+
 /**
  * Unified fetch wrapper with timeout and enhanced error handling
  */

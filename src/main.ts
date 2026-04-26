@@ -12,6 +12,7 @@ import { renderScheduleBlockList } from './components/ScheduleBlockList'
 import { renderRecurringBlockForm } from './components/RecurringBlockForm'
 import { renderRecurringBlockList } from './components/RecurringBlockList'
 import { renderHome } from './components/Home'
+import { renderDashboard } from './components/Dashboard'
 import { getProject } from './api/hapio'
 
 const app = document.querySelector('#app') as HTMLElement;
@@ -28,6 +29,11 @@ function renderApp(): void {
       </div>
       
       <nav class="sidebar-menu">
+        <div class="nav-link" data-view="dashboard" data-tooltip="Visión general del sistema">
+          <span class="nav-link-icon">📊</span>
+          Dashboard
+        </div>
+
         <div class="menu-item expanded" id="menu-loc">
           <div class="menu-header">
             <span>Localización</span>
@@ -182,6 +188,8 @@ function renderApp(): void {
       renderScheduleBlockList(content);
     } else if (viewName === 'home') {
       renderHome(content);
+    } else if (viewName === 'dashboard') {
+      renderDashboard(content);
     } else {
       renderLocationList(content);
     }
@@ -193,7 +201,7 @@ function renderApp(): void {
   });
 
   // Initial View
-  switchView('home');
+  switchView('dashboard');
 
   // Load project info
   async function loadProjectInfo() {

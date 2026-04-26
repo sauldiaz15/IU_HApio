@@ -1038,3 +1038,165 @@ tr:hover td {
   pointer-events: all;
   opacity: 1;
 }
+
+/* Dashboard View */
+.dashboard-view {
+    animation: fadeIn 0.5s ease-out;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: rgba(30, 41, 59, 0.4);
+    backdrop-filter: blur(12px);
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.stat-icon.locations { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+.stat-icon.resources { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.stat-icon.services { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.stat-icon.bookings { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+
+.stat-info h3 {
+    font-size: 1.75rem;
+    margin: 0;
+    font-weight: 700;
+    color: white;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-bottom: 0.2rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1.8fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.recent-list {
+    min-height: 250px;
+}
+
+.simple-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.simple-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: #64748b;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.simple-table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.quick-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.action-btn {
+    background: rgba(15, 23, 42, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 1.25rem 1rem;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    color: #cbd5e1;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.action-btn:hover {
+    background: rgba(30, 41, 59, 0.6);
+    border-color: #6366f1;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.action-icon {
+    width: 32px;
+    height: 32px;
+    background: #6366f1;
+    color: white;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.stat-trend {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 20px;
+    margin-top: 0.25rem;
+    display: inline-block;
+}
+
+.stat-trend.positive { background: rgba(52, 211, 153, 0.1); color: #34d399; }
+.stat-trend.neutral { background: rgba(148, 163, 184, 0.1); color: #94a3b8; }
+
+.empty-state {
+    padding: 3rem;
+    text-align: center;
+    color: #64748b;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
