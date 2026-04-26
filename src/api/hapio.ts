@@ -402,6 +402,27 @@ export async function deleteRecurringScheduleBlock(resourceId: string, scheduleI
 }
 
 /**
+ * Updates a block in a recurring schedule.
+ */
+export async function updateRecurringScheduleBlock(
+    resourceId: string,
+    scheduleId: string,
+    blockId: string,
+    data: Partial<RecurringScheduleBlockData>
+): Promise<RecurringScheduleBlock> {
+    const response = await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/recurring-schedules/${scheduleId}/schedule-blocks/${blockId}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    return result.data || result;
+}
+
+/**
  * Fetches the list of recurring schedules for a resource.
  */
 export async function getRecurringSchedules(resourceId: string): Promise<HapioResponse<RecurringSchedule[]>> {

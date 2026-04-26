@@ -3,6 +3,7 @@ import {
     getRecurringSchedules,
     getRecurringScheduleBlocks,
     deleteRecurringScheduleBlock,
+    updateRecurringScheduleBlock,
     Resource,
     RecurringSchedule,
     RecurringScheduleBlock,
@@ -24,6 +25,9 @@ const WEEKDAY_ORDER: Record<string, number> = {
 };
 
 export function renderRecurringBlockList(container: HTMLElement): void {
+    // Current state for editing
+    let editingBlockId: string | null = null;
+
     container.innerHTML = `
         <div class="view-header">
             <h2>Bloques Recurrentes</h2>
@@ -108,6 +112,7 @@ export function renderRecurringBlockList(container: HTMLElement): void {
         const resourceId = resourceSel.value;
         const scheduleId = scheduleSel.value;
         if (resourceId && scheduleId) {
+            editingBlockId = null;
             loadBlocks(resourceId, scheduleId);
         }
     });
@@ -151,15 +156,31 @@ export function renderRecurringBlockList(container: HTMLElement): void {
                             <th>Día</th>
                             <th>Inicio</th>
                             <th>Fin</th>
-                            <th class="text-center" style="width:110px;">Acciones</th>
+                            <th class="text-center" style="width:180px;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${blocks.map(block => {
+            const isEditing = editingBlockId === block.id;
             const dayLabel = WEEKDAY_LABELS[block.weekday] ?? block.weekday;
             // Strip seconds for display: "09:00:00" → "09:00"
             const startDisplay = block.start_time.slice(0, 5);
             const endDisplay = block.end_time.slice(0, 5);
+
+            if (isEditing) {
+                return `
+                    <tr class="editing-row">
+                        <td><span class="badge badge-info">${dayLabel}</span></td>
+                        <td><input type="time" class="edit-start" value="${startDisplay}"></td>
+                        <td><input type="time" class="edit-end" value="${endDisplay}"></td>
+                        <td class="text-center">
+                            <button class="btn btn-primary btn-sm save-edit" data-id="${block.id}">✓</button>
+                            <button class="btn btn-secondary btn-sm cancel-edit">✕</button>
+                        </td>
+                    </tr>
+                `;
+            }
+
             return `
                                 <tr>
                                     <td>
@@ -168,6 +189,7 @@ export function renderRecurringBlockList(container: HTMLElement): void {
                                     <td><strong>${startDisplay}</strong></td>
                                     <td><strong>${endDisplay}</strong></td>
                                     <td class="text-center">
+                                        <button class="btn btn-secondary btn-sm start-edit" data-id="${block.id}" style="margin-right:0.25rem;">Editar</button>
                                         <button class="btn btn-danger btn-sm delete-recurring-block"
                                                 data-id="${block.id}">
                                             Eliminar
@@ -180,6 +202,56 @@ export function renderRecurringBlockList(container: HTMLElement): void {
                 </table>
             </div>
         `;
+
+        // Attach Event Listeners
+        attachTableListeners(blocks, resourceId, scheduleId);
+    }
+
+    function attachTableListeners(blocks: RecurringScheduleBlock[], resourceId: string, scheduleId: string) {
+        // Start Edit
+        listContent.querySelectorAll<HTMLButtonElement>('.start-edit').forEach(btn => {
+            btn.addEventListener('click', () => {
+                editingBlockId = btn.dataset.id!;
+                renderTable(blocks, resourceId, scheduleId);
+            });
+        });
+
+        // Cancel Edit
+        listContent.querySelectorAll<HTMLButtonElement>('.cancel-edit').forEach(btn => {
+            btn.addEventListener('click', () => {
+                editingBlockId = null;
+                renderTable(blocks, resourceId, scheduleId);
+            });
+        });
+
+        // Save Edit
+        listContent.querySelectorAll<HTMLButtonElement>('.save-edit').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const blockId = btn.dataset.id!;
+                const row = btn.closest('tr')!;
+                const startInput = row.querySelector('.edit-start') as HTMLInputElement;
+                const endInput = row.querySelector('.edit-end') as HTMLInputElement;
+
+                const toApiTime = (t: string) => t.length === 5 ? `${t}:00` : t;
+                const data = {
+                    start_time: toApiTime(startInput.value),
+                    end_time: toApiTime(endInput.value)
+                };
+
+                btn.disabled = true;
+                btn.textContent = '…';
+
+                try {
+                    await updateRecurringScheduleBlock(resourceId, scheduleId, blockId, data);
+                    editingBlockId = null;
+                    loadBlocks(resourceId, scheduleId);
+                } catch (err: any) {
+                    alert(`Error al actualizar: ${err.message}`);
+                    btn.disabled = false;
+                    btn.textContent = '✓';
+                }
+            });
+        });
 
         // Delete handlers
         listContent.querySelectorAll<HTMLButtonElement>('.delete-recurring-block').forEach(btn => {

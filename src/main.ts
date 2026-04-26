@@ -34,11 +34,11 @@ function renderApp(): void {
             <span class="menu-arrow">▼</span>
           </div>
           <div class="sub-menu">
-            <div class="nav-link active" data-view="list">
+          <div class="nav-link active" data-view="list" data-tooltip="Ver y gestionar las sedes físicas">
               <span class="nav-link-icon">.</span>
               Ver Localizaciones
             </div>
-            <div class="nav-link" data-view="create">
+            <div class="nav-link" data-view="create" data-tooltip="Registrar una nueva sede">
               <span class="nav-link-icon">.</span>
               Crear Nueva
             </div>
@@ -51,11 +51,11 @@ function renderApp(): void {
             <span class="menu-arrow">▼</span>
           </div>
           <div class="sub-menu">
-            <div class="nav-link" data-view="resources-list">
+            <div class="nav-link" data-view="resources-list" data-tooltip="Listar personal o salas disponibles">
               <span class="nav-link-icon">.</span>
               Ver Recursos
             </div>
-            <div class="nav-link" data-view="resources-create">
+            <div class="nav-link" data-view="resources-create" data-tooltip="Añadir personal o equipamiento">
               <span class="nav-link-icon">.</span>
               Crear Nuevo Recurso
             </div>
@@ -68,11 +68,11 @@ function renderApp(): void {
             <span class="menu-arrow">▼</span>
           </div>
           <div class="sub-menu">
-            <div class="nav-link" data-view="services-list">
+            <div class="nav-link" data-view="services-list" data-tooltip="Consultar el catálogo de servicios">
               <span class="nav-link-icon">.</span>
               Ver Servicios
             </div>
-            <div class="nav-link" data-view="services-create">
+            <div class="nav-link" data-view="services-create" data-tooltip="Definir un nuevo tipo de cita">
               <span class="nav-link-icon">.</span>
               Nuevo Servicio
             </div>
@@ -85,11 +85,11 @@ function renderApp(): void {
             <span class="menu-arrow">▼</span>
           </div>
           <div class="sub-menu">
-            <div class="nav-link" data-view="schedules-list">
+            <div class="nav-link" data-view="schedules-list" data-tooltip="Ver turnos rotativos de recursos">
               <span class="nav-link-icon">.</span>
               Ver Horarios Semanales
             </div>
-            <div class="nav-link" data-view="schedules-create">
+            <div class="nav-link" data-view="schedules-create" data-tooltip="Establecer un nuevo horario base">
               <span class="nav-link-icon">.</span>
               Crear Horario Semanal
             </div>
@@ -102,19 +102,19 @@ function renderApp(): void {
             <span class="menu-arrow">▼</span>
           </div>
           <div class="sub-menu">
-            <div class="nav-link" data-view="blocks-list">
+            <div class="nav-link" data-view="blocks-list" data-tooltip="Consultar bloques de tiempo específicos">
               <span class="nav-link-icon">.</span>
                Ver Bloques de Horario
             </div>
-            <div class="nav-link" data-view="blocks-create">
+            <div class="nav-link" data-view="blocks-create" data-tooltip="Añadir un bloque puntual">
               <span class="nav-link-icon">.</span>
                Crear Bloque de Horario
             </div>
-            <div class="nav-link" data-view="blocks-recurring-list">
+            <div class="nav-link" data-view="blocks-recurring-list" data-tooltip="Patrones semanales de disponibilidad">
               <span class="nav-link-icon">.</span>
                Ver Bloques Recurrentes
             </div>
-            <div class="nav-link" data-view="blocks-create-recurring">
+            <div class="nav-link" data-view="blocks-create-recurring" data-tooltip="Definir turnos que se repiten">
               <span class="nav-link-icon">.</span>
                Crear Bloque Recurrente
             </div>
