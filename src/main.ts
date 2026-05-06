@@ -3,6 +3,7 @@ import { renderLocationForm } from './components/LocationForm'
 import { renderLocationList } from './components/LocationList'
 import { renderResourceList } from './components/ResourceList'
 import { renderResourceForm } from './components/ResourceForm'
+import { renderResourceSchedule } from './components/ResourceSchedule'
 import { renderServiceList } from './components/ServiceList'
 import { renderServiceForm } from './components/ServiceForm'
 import { renderScheduleForm } from './components/ScheduleForm'
@@ -13,6 +14,9 @@ import { renderRecurringBlockForm } from './components/RecurringBlockForm'
 import { renderRecurringBlockList } from './components/RecurringBlockList'
 import { renderHome } from './components/Home'
 import { renderDashboard } from './components/Dashboard'
+import { renderBookingForm } from './components/BookingForm'
+import { renderBookingList } from './components/BookingList'
+import { renderBookingEdit } from './components/BookingEdit'
 import { getProject } from './api/hapio'
 
 const app = document.querySelector('#app') as HTMLElement;
@@ -64,6 +68,10 @@ function renderApp(): void {
             <div class="nav-link" data-view="resources-create" data-tooltip="Añadir personal o equipamiento">
               <span class="nav-link-icon">.</span>
               Crear Nuevo Recurso
+            </div>
+            <div class="nav-link" data-view="resources-schedule" data-tooltip="Ver horarios del recurso">
+              <span class="nav-link-icon">.</span>
+              Ver Horarios del Recurso
             </div>
           </div>
         </div>
@@ -126,6 +134,27 @@ function renderApp(): void {
             </div>
           </div>
         </div>
+
+        <div class="menu-item" id="menu-bookings">
+          <div class="menu-header">
+            <span>📅 Reservas</span>
+            <span class="menu-arrow">▼</span>
+          </div>
+          <div class="sub-menu">
+            <div class="nav-link" data-view="bookings-create" data-tooltip="Registrar una nueva reserva">
+              <span class="nav-link-icon">.</span>
+               Crear Nueva Reserva
+            </div>
+            <div class="nav-link" data-view="bookings-edit" data-tooltip="Modificar una reserva existente">
+              <span class="nav-link-icon">.</span>
+               Editar Reserva
+            </div>
+            <div class="nav-link" data-view="bookings-list" data-tooltip="Ver todas las reservas">
+              <span class="nav-link-icon">.</span>
+               Listar Todas Las Reservas
+            </div>
+          </div>
+        </div>
       </nav>
     </aside>
     
@@ -170,6 +199,8 @@ function renderApp(): void {
       renderResourceList(content);
     } else if (viewName === 'resources-create') {
       renderResourceForm(content);
+    } else if (viewName === 'resources-schedule') {
+      renderResourceSchedule(content);
     } else if (viewName === 'services-list') {
       renderServiceList(content);
     } else if (viewName === 'services-create') {
@@ -186,6 +217,12 @@ function renderApp(): void {
       renderRecurringBlockForm(content);
     } else if (viewName === 'blocks-list') {
       renderScheduleBlockList(content);
+    } else if (viewName === 'bookings-create') {
+      renderBookingForm(content);
+    } else if (viewName === 'bookings-edit') {
+      renderBookingEdit(content);
+    } else if (viewName === 'bookings-list') {
+      renderBookingList(content);
     } else if (viewName === 'home') {
       renderHome(content);
     } else if (viewName === 'dashboard') {

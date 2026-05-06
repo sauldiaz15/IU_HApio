@@ -109,17 +109,24 @@ export async function getProject(): Promise<HapioResponse<Project>> {
     return await response.json();
 }
 
-export interface Booking {
-    id: string;
+export interface BookingData {
     resource_id: string;
     service_id: string;
+    location_id: string;
     starts_at: string;
     ends_at: string;
-    status: string;
     customer?: {
-        name: string;
-        email: string;
+        name?: string;
+        email?: string;
     };
+    ignore_bookable_slots?: boolean;
+}
+
+export interface Booking extends BookingData {
+    id: string;
+    status: string;
+    created_at?: string;
+    updated_at?: string;
 }
 
 /**
@@ -133,6 +140,41 @@ export async function getBookings(params: Record<string, string> = {}): Promise<
     });
 
     return await response.json();
+}
+
+/**
+ * Creates a new booking in Hapio.
+ */
+export async function createBooking(data: BookingData): Promise<Booking> {
+    const response = await fetchWithTimeout(`${BASE_URL}/bookings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    return result.data || result;
+}
+
+/**
+ * Updates an existing booking in Hapio (PATCH).
+ */
+export async function updateBooking(id: string, data: Partial<BookingData>): Promise<Booking> {
+    const response = await fetchWithTimeout(`${BASE_URL}/bookings/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    return result.data || result;
+}
+
+/**
+ * Cancels a booking in Hapio.
+ */
+export async function cancelBooking(id: string): Promise<void> {
+    await fetchWithTimeout(`${BASE_URL}/bookings/${id}/cancel`, {
+        method: 'POST',
+    });
 }
 
 /**
@@ -515,4 +557,52 @@ export async function deleteScheduleBlock(resourceId: string, blockId: string): 
     await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/schedule-blocks/${blockId}`, {
         method: 'DELETE',
     });
+}
+
+export interface ResourceScheduleSpan {
+    starts_at: string;
+    ends_at: string;
+}
+
+/**
+ * Fetches the computed schedule for a resource at a given location and time frame.
+ */
+export async function getResourceSchedule(resourceId: string, params: Record<string, string>): Promise<HapioResponse<ResourceScheduleSpan[]>> {
+    const query = new URLSearchParams(params).toString();
+    const url = `${BASE_URL}/resources/${resourceId}/schedule${query ? `?${query}` : ''}`;
+    const response = await fetchWithTimeout(url, {
+        method: 'GET',
+    });
+
+    return await response.json();
+}
+
+/**
+ * Associates a service with a resource.
+ */
+export async function associateResourceService(resourceId: string, serviceId: string): Promise<void> {
+    await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/services/${serviceId}`, {
+        method: 'PUT',
+    });
+}
+
+export interface BookableSlot {
+    starts_at: string;
+    ends_at: string;
+    buffer_starts_at?: string;
+    buffer_ends_at?: string;
+    // ...other fields depend on service type
+}
+
+/**
+ * Fetches available bookable slots for a service.
+ */
+export async function getBookableSlots(serviceId: string, params: Record<string, string>): Promise<HapioResponse<BookableSlot[]>> {
+    const query = new URLSearchParams(params).toString();
+    const url = `${BASE_URL}/services/${serviceId}/bookable-slots${query ? `?${query}` : ''}`;
+    const response = await fetchWithTimeout(url, {
+        method: 'GET',
+    });
+
+    return await response.json();
 }
