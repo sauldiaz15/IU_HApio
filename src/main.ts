@@ -145,11 +145,7 @@ function renderApp(): void {
               <span class="nav-link-icon">.</span>
                Crear Nueva Reserva
             </div>
-            <div class="nav-link" data-view="bookings-edit" data-tooltip="Modificar una reserva existente">
-              <span class="nav-link-icon">.</span>
-               Editar Reserva
-            </div>
-            <div class="nav-link" data-view="bookings-list" data-tooltip="Ver todas las reservas">
+            <div class="nav-link" data-view="bookings-list" data-tooltip="Ver y gestionar todas las reservas">
               <span class="nav-link-icon">.</span>
                Listar Todas Las Reservas
             </div>
@@ -235,6 +231,12 @@ function renderApp(): void {
   // Event Listeners for sidebar links
   navLinks.forEach(link => {
     link.addEventListener('click', () => switchView(link.dataset.view!));
+  });
+
+  // Global event: any component can dispatch 'navigate-view' to change the current view
+  document.addEventListener('navigate-view', (e: Event) => {
+    const detail = (e as CustomEvent<{ view: string }>).detail;
+    if (detail?.view) switchView(detail.view);
   });
 
   // Initial View

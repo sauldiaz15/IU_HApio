@@ -118,6 +118,8 @@ export interface BookingData {
     customer?: {
         name?: string;
         email?: string;
+        phone?: string;
+        reason?: string;
     };
     ignore_bookable_slots?: boolean;
 }
@@ -139,17 +141,36 @@ export async function getBookings(params: Record<string, string> = {}): Promise<
         method: 'GET',
     });
 
-    return await response.json();
+    const result = await response.json();
+
+    // Adaptar metadatos para que la UI reciba el objeto \`customer\` si existe
+    if (result.data) {
+        result.data.forEach((b: any) => {
+            if (b.metadata && b.metadata.customer) {
+                b.customer = b.metadata.customer;
+            }
+        });
+    }
+
+    return result;
 }
 
 /**
  * Creates a new booking in Hapio.
  */
 export async function createBooking(data: BookingData): Promise<Booking> {
+    const payload: any = { ...data };
+
+    // Hapio no admite \`customer\` en la raíz, debe guardarse en \`metadata\`
+    if (payload.customer) {
+        payload.metadata = { ...payload.metadata, customer: payload.customer };
+        delete payload.customer;
+    }
+
     const response = await fetchWithTimeout(`${BASE_URL}/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
     });
     const result = await response.json();
     return result.data || result;
@@ -159,10 +180,18 @@ export async function createBooking(data: BookingData): Promise<Booking> {
  * Updates an existing booking in Hapio (PATCH).
  */
 export async function updateBooking(id: string, data: Partial<BookingData>): Promise<Booking> {
+    const payload: any = { ...data };
+
+    // Igual que en la creación, mover \`customer\` a \`metadata\`
+    if (payload.customer) {
+        payload.metadata = { ...payload.metadata, customer: payload.customer };
+        delete payload.customer;
+    }
+
     const response = await fetchWithTimeout(`${BASE_URL}/bookings/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
     });
     const result = await response.json();
     return result.data || result;

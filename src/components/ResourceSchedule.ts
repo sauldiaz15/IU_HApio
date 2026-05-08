@@ -15,15 +15,19 @@ function addDaysStr(dateStr: string, days: number): string {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** Formatea una fecha ISO a algo legible (ej. 14/05/2026, 09:00 - 18:00) */
+/** Formatea una fecha ISO a algo legible (ej. 14/05/2026, 09:00 - 18:00) en su zona horaria nativa */
 function formatScheduleSpan(span: ResourceScheduleSpan): string {
-    const start = new Date(span.starts_at);
-    const end = new Date(span.ends_at);
+    // Al igual que en BookingForm, extraemos el fragmento exacto y lo forzamos a UTC para evitar desvases del navegador local
+    const startStrUtc = span.starts_at.substring(0, 19) + "Z";
+    const endStrUtc = span.ends_at.substring(0, 19) + "Z";
+
+    const start = new Date(startStrUtc);
+    const end = new Date(endStrUtc);
 
     const pad = (n: number) => String(n).padStart(2, '0');
-    const dateStr = `${pad(start.getDate())}/${pad(start.getMonth() + 1)}/${start.getFullYear()}`;
-    const startTime = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
-    const endTime = `${pad(end.getHours())}:${pad(end.getMinutes())}`;
+    const dateStr = `${pad(start.getUTCDate())}/${pad(start.getUTCMonth() + 1)}/${start.getUTCFullYear()}`;
+    const startTime = `${pad(start.getUTCHours())}:${pad(start.getUTCMinutes())}`;
+    const endTime = `${pad(end.getUTCHours())}:${pad(end.getUTCMinutes())}`;
 
     return `<strong>${dateStr}</strong>: ${startTime} - ${endTime}`;
 }

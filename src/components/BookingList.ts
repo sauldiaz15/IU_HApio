@@ -1,10 +1,15 @@
 import { getBookings, cancelBooking, Booking } from '../api/hapio';
 
+/** Navega a otra vista usando el evento global definido en main.ts */
+function navigateTo(view: string): void {
+    document.dispatchEvent(new CustomEvent('navigate-view', { detail: { view } }));
+}
+
 export function renderBookingList(container: HTMLElement): void {
     container.innerHTML = `
         <div class="view-header">
             <h2>Listado de Reservas</h2>
-            <p>Consulta y gestiona todas las reservas registradas en el proyecto.</p>
+            <p>Consulta y gestiona todas las reservas. Haz click en <strong>Ver</strong> para ver el detalle o editar.</p>
         </div>
 
         <div class="card" style="margin-bottom: 1rem;">
@@ -102,7 +107,8 @@ export function renderBookingList(container: HTMLElement): void {
                             <th>Fin</th>
                             <th>Estado</th>
                             <th>Cliente</th>
-                            <th class="text-center" style="width: 110px;">Acciones</th>
+                            <th>Motivo</th>
+                            <th class="text-center" style="width: 160px;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -111,10 +117,11 @@ export function renderBookingList(container: HTMLElement): void {
             const badgeClass = statusBadgeClass[status] || 'badge badge-info';
             const label = statusLabels[status] || status;
             const customerName = b.customer?.name || '-';
+            const customerReason = (b.customer as any)?.reason || '-';
             const shortId = b.id.substring(0, 8) + '…';
             const isCancelled = status === 'cancelled';
             return `
-                                <tr>
+                                <tr class="booking-row" data-id="${b.id}" style="cursor: pointer;" title="Click para ver detalle">
                                     <td>
                                         <span title="${b.id}" style="font-family: monospace; font-size: 0.8rem; cursor: help;">${shortId}</span>
                                     </td>
@@ -122,11 +129,15 @@ export function renderBookingList(container: HTMLElement): void {
                                     <td>${formatDateTime(b.ends_at)}</td>
                                     <td><span class="${badgeClass}">${label}</span></td>
                                     <td>${customerName}</td>
-                                    <td class="text-center">
+                                    <td style="max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${customerReason}">${customerReason}</td>
+                                    <td class="text-center" style="white-space: nowrap;">
+                                        <button class="btn btn-secondary btn-sm view-booking" data-id="${b.id}" title="Ver detalle y editar">
+                                            👁 Ver
+                                        </button>
                                         ${!isCancelled ? `
-                                        <button class="btn btn-danger btn-sm cancel-booking" data-id="${b.id}">
-                                            Cancelar
-                                        </button>` : '<span style="color:#64748b; font-size:0.8rem;">—</span>'}
+                                        <button class="btn btn-danger btn-sm cancel-booking" data-id="${b.id}" title="Cancelar reserva" style="margin-left: 0.25rem;">
+                                            ✕
+                                        </button>` : '<span style="color:#64748b; font-size:0.8rem; margin-left:0.25rem;">—</span>'}
                                     </td>
                                 </tr>
                             `;
@@ -139,9 +150,31 @@ export function renderBookingList(container: HTMLElement): void {
             </div>
         `;
 
+        // "Ver detalle" buttons
+        listContent.querySelectorAll('.view-booking').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const bookingId = (e.currentTarget as HTMLButtonElement).dataset.id!;
+                localStorage.setItem('edit_booking_id', bookingId);
+                navigateTo('bookings-edit');
+            });
+        });
+
+        // Row click → same as "Ver"
+        listContent.querySelectorAll<HTMLTableRowElement>('.booking-row').forEach(row => {
+            row.addEventListener('click', (e) => {
+                // Don't trigger if a button inside the row was clicked
+                if ((e.target as HTMLElement).closest('button')) return;
+                const bookingId = row.dataset.id!;
+                localStorage.setItem('edit_booking_id', bookingId);
+                navigateTo('bookings-edit');
+            });
+        });
+
         // Cancel buttons
         listContent.querySelectorAll('.cancel-booking').forEach(btn => {
             btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
                 const button = e.currentTarget as HTMLButtonElement;
                 const bookingId = button.dataset.id!;
 
@@ -156,7 +189,7 @@ export function renderBookingList(container: HTMLElement): void {
                 } catch (error: any) {
                     alert(`Error al cancelar la reserva: ${error.message}`);
                     button.disabled = false;
-                    button.textContent = 'Cancelar';
+                    button.textContent = '✕';
                 }
             });
         });

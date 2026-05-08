@@ -98,12 +98,20 @@ export function renderBookingForm(container: HTMLElement): void {
                     <h3>Datos del Cliente (Opcional)</h3>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="booking-customer-name">Nombre del Cliente</label>
+                            <label for="booking-customer-name">Nombre Completo</label>
                             <input type="text" id="booking-customer-name" name="customer_name" placeholder="Ej. Juan Pérez">
                         </div>
                         <div class="form-group">
                             <label for="booking-customer-email">Email del Cliente</label>
                             <input type="email" id="booking-customer-email" name="customer_email" placeholder="Ej. juan@ejemplo.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="booking-customer-phone">Teléfono</label>
+                            <input type="tel" id="booking-customer-phone" name="customer_phone" placeholder="Ej. +58 412 1234567">
+                        </div>
+                        <div class="form-group">
+                            <label for="booking-customer-reason">Motivo de Consulta</label>
+                            <input type="text" id="booking-customer-reason" name="customer_reason" placeholder="Ej. Chequeo general">
                         </div>
                     </div>
                 </div>
@@ -173,19 +181,26 @@ export function renderBookingForm(container: HTMLElement): void {
             const pad = (n: number) => String(n).padStart(2, '0');
 
             spans.forEach(span => {
-                let current = new Date(span.starts_at);
-                const end = new Date(span.ends_at);
+                // El formato es ej: "2026-05-08T09:00:00-04:00"
+                // Para ignorar la zona horaria del navegador local (-03:00) y ver el 09:00 real,
+                // extraemos solo la parte inicial (ej. "2026-05-08T09:00:00") y le aplicamos 'Z' (UTC).
+                const timeZoneOffset = span.starts_at.substring(19); // extrae p. ej "-04:00" o "Z"
+                const startStrUtc = span.starts_at.substring(0, 19) + "Z";
+                const endStrUtc = span.ends_at.substring(0, 19) + "Z";
 
-                // Fraccionamos el span continuo en bloques de SLOT_DURATION_MIN
+                let current = new Date(startStrUtc);
+                const end = new Date(endStrUtc);
+
+                // Fraccionamos el span continuo en bloques de SLOT_DURATION_MIN usando UTC para no sufrir desvases
                 while (current.getTime() + SLOT_DURATION_MIN * 60000 <= end.getTime()) {
-                    const sh = pad(current.getHours());
-                    const sm = pad(current.getMinutes());
+                    const sh = pad(current.getUTCHours());
+                    const sm = pad(current.getUTCMinutes());
 
                     const next = new Date(current.getTime() + SLOT_DURATION_MIN * 60000);
-                    const eh = pad(next.getHours());
-                    const em = pad(next.getMinutes());
+                    const eh = pad(next.getUTCHours());
+                    const em = pad(next.getUTCMinutes());
 
-                    options.push(`<option value="${sh}:${sm}" data-end="${eh}:${em}">${sh}:${sm}</option>`);
+                    options.push(`<option value="${sh}:${sm}" data-end="${eh}:${em}" data-offset="${timeZoneOffset}">${sh}:${sm}</option>`);
 
                     current = next;
                 }
@@ -291,20 +306,40 @@ export function renderBookingForm(container: HTMLElement): void {
         const formData = new FormData(form);
         const customerName = (formData.get('customer_name') as string).trim();
         const customerEmail = (formData.get('customer_email') as string).trim();
+        const customerPhone = (formData.get('customer_phone') as string).trim();
+        const customerReason = (formData.get('customer_reason') as string).trim();
+
+        // Extraer timezone offset original de la opción seleccionada (p. ej. "-04:00")
+        const selectedOption = startTimeSel.options[startTimeSel.selectedIndex];
+        const offset = selectedOption.dataset.offset;
+
+        // Si tenemos offset original construmos la fecha usando ese offset para respetar la zona horaria del recurso
+        let startsAtIso = '';
+        let endsAtIso = '';
+        if (offset) {
+            startsAtIso = `${date}T${startTime}:00${offset}`;
+            endsAtIso = `${date}T${endTime}:00${offset}`;
+        } else {
+            // Backup por si falla (usa hora local)
+            startsAtIso = buildISO(date, startTime);
+            endsAtIso = buildISO(date, endTime);
+        }
 
         const bookingData: BookingData = {
             resource_id: formData.get('resource_id') as string,
             service_id: formData.get('service_id') as string,
             location_id: formData.get('location_id') as string,
-            starts_at: buildISO(date, startTime),
-            ends_at: buildISO(date, endTime),
+            starts_at: startsAtIso,
+            ends_at: endsAtIso,
             ignore_bookable_slots: true,
         };
 
-        if (customerName || customerEmail) {
+        if (customerName || customerEmail || customerPhone || customerReason) {
             bookingData.customer = {};
             if (customerName) bookingData.customer.name = customerName;
             if (customerEmail) bookingData.customer.email = customerEmail;
+            if (customerPhone) bookingData.customer.phone = customerPhone;
+            if (customerReason) bookingData.customer.reason = customerReason;
         }
 
         try {
