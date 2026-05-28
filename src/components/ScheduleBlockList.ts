@@ -72,6 +72,15 @@ export function renderScheduleBlockList(container: HTMLElement): void {
         }
     }
 
+    /** Extrae fecha y hora directamente del ISO string para no convertir al huso local del navegador */
+    function formatISO(iso: string): string {
+        if (!iso) return '-';
+        const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+        if (!match) return iso;
+        const [, year, month, day, hour, minute] = match;
+        return `${day}/${month}/${year}, ${hour}:${minute}`;
+    }
+
     function renderTable(blocks: ScheduleBlock[], resourceId: string) {
         listContent.innerHTML = `
             <div class="table-container">
@@ -88,8 +97,8 @@ export function renderScheduleBlockList(container: HTMLElement): void {
                     <tbody>
                         ${blocks.map(block => {
             const locationName = (block as any).location?.name || 'Desconocida';
-            const startsAt = new Date(block.starts_at).toLocaleString();
-            const endsAt = new Date(block.ends_at).toLocaleString();
+            const startsAt = formatISO(block.starts_at);
+            const endsAt = formatISO(block.ends_at);
             const statusBadge = block.is_available
                 ? '<span class="badge badge-info">Disponible</span>'
                 : '<span class="badge badge-danger" style="background: rgba(239, 68, 68, 0.1); color: #f87171;">Bloqueado</span>';

@@ -62,11 +62,14 @@ export function renderBookingList(container: HTMLElement): void {
 
     function formatDateTime(iso: string): string {
         if (!iso) return '-';
-        const d = new Date(iso);
-        return d.toLocaleString('es-ES', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
+        // Extraemos la fecha y hora directamente del string ISO para no sufrir
+        // conversiones al huso horario local del navegador.
+        // El formato de la API es: "2026-05-28T09:00:00-04:00" o "...Z"
+        // Tomamos la parte fija: YYYY-MM-DDTHH:MM
+        const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+        if (!match) return iso;
+        const [, year, month, day, hour, minute] = match;
+        return `${day}/${month}/${year}, ${hour}:${minute}`;
     }
 
     async function loadBookings(params: Record<string, string> = {}) {

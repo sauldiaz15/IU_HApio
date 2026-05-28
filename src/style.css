@@ -26,11 +26,14 @@
   background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(4px);
   color: #f8fafc;
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 6px;
   font-size: 0.7rem;
   font-weight: 500;
-  white-space: nowrap;
+  white-space: normal;
+  word-wrap: break-word;
+  max-width: 260px;
+  line-height: 1.5;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -281,6 +284,7 @@ body {
   /* Adjust based on content */
   opacity: 1;
   margin-bottom: 0.5rem;
+  overflow: visible; /* permite que los tooltips salgan fuera del contenedor */
 }
 
 .nav-link {

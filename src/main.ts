@@ -99,11 +99,11 @@ function renderApp(): void {
             <span class="menu-arrow">▼</span>
           </div>
           <div class="sub-menu">
-            <div class="nav-link" data-view="schedules-list" data-tooltip="Ver turnos rotativos de recursos">
+            <div class="nav-link" data-view="schedules-list" data-tooltip="Lista los horarios semanales creados (Paso 1 de 2). Son el marco que define la sede y el período de vigencia. Deben tener Bloques Recurrentes para generar disponibilidad real.">
               <span class="nav-link-icon">.</span>
               Ver Horarios Semanales
             </div>
-            <div class="nav-link" data-view="schedules-create" data-tooltip="Establecer un nuevo horario base">
+            <div class="nav-link" data-view="schedules-create" data-tooltip="Crea el marco del horario semanal (Paso 1 de 2): define en qué sede aplica y desde cuándo hasta cuándo estará activo. Luego debes agregarle días y horas en Bloques Recurrentes.">
               <span class="nav-link-icon">.</span>
               Crear Horario Semanal
             </div>
@@ -116,19 +116,19 @@ function renderApp(): void {
             <span class="menu-arrow">▼</span>
           </div>
           <div class="sub-menu">
-            <div class="nav-link" data-view="blocks-list" data-tooltip="Consultar bloques de tiempo específicos">
+            <div class="nav-link" data-view="blocks-list" data-tooltip="Bloques puntuales para fechas específicas: excepciones al horario habitual, feriados o días especiales con disponibilidad u bloqueo">
               <span class="nav-link-icon">.</span>
                Ver Bloques de Horario
             </div>
-            <div class="nav-link" data-view="blocks-create" data-tooltip="Añadir un bloque puntual">
+            <div class="nav-link" data-view="blocks-create" data-tooltip="Crea un bloque para una fecha y hora exacta: bloquear un día de vacaciones, habilitar una consulta especial un sábado, etc.">
               <span class="nav-link-icon">.</span>
                Crear Bloque de Horario
             </div>
-            <div class="nav-link" data-view="blocks-recurring-list" data-tooltip="Patrones semanales de disponibilidad">
+            <div class="nav-link" data-view="blocks-recurring-list" data-tooltip="Bloques recurrentes: el horario semanal base del recurso (ej. lunes a viernes de 9am a 6pm). Se repiten automáticamente cada semana">
               <span class="nav-link-icon">.</span>
                Ver Bloques Recurrentes
             </div>
-            <div class="nav-link" data-view="blocks-create-recurring" data-tooltip="Definir turnos que se repiten">
+            <div class="nav-link" data-view="blocks-create-recurring" data-tooltip="Define el horario habitual semanal del recurso: qué días trabaja y en qué horario. Se aplica semana a semana automáticamente">
               <span class="nav-link-icon">.</span>
                Crear Bloque Recurrente
             </div>

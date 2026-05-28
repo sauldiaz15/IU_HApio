@@ -151,8 +151,8 @@ export function renderDashboard(container: HTMLElement): void {
                                 <div class="text-muted" style="font-size:0.75rem;">${b.customer?.email || 'N/A'}</div>
                             </td>
                             <td>
-                                <div>${new Date(b.starts_at).toLocaleDateString()}</div>
-                                <div class="text-muted" style="font-size:0.8rem;">${new Date(b.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                <div>${b.starts_at.substring(0, 10).split('-').reverse().join('/')}</div>
+                                <div class="text-muted" style="font-size:0.8rem;">${b.starts_at.substring(11, 16)}</div>
                             </td>
                             <td>
                                 <span class="badge ${b.status === 'confirmed' ? 'badge-success' : 'badge-info'}">${b.status}</span>
