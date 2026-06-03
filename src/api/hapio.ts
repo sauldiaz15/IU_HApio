@@ -607,11 +607,59 @@ export async function getResourceSchedule(resourceId: string, params: Record<str
 }
 
 /**
+ * Fetches the services associated with a resource.
+ * Handles both {data:[]} wrapped and direct array responses from Hapio.
+ */
+export async function getResourceServices(resourceId: string): Promise<HapioResponse<Service[]>> {
+    try {
+        const response = await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/services`, {
+            method: 'GET',
+        });
+        const result = await response.json();
+
+        // Handle direct array response (no wrapper)
+        if (Array.isArray(result)) {
+            return { data: result };
+        }
+        // Handle {data: [...]} wrapper
+        if (result && Array.isArray(result.data)) {
+            return result;
+        }
+        // Unknown format — return empty
+        console.warn('[getResourceServices] Unexpected response format:', result);
+        return { data: [] };
+    } catch (err: any) {
+        // If endpoint doesn't exist (404/405), fall back to filtering all services
+        console.warn('[getResourceServices] Endpoint failed, trying fallback:', err.message);
+        const allResp = await fetchWithTimeout(`${BASE_URL}/services`, { method: 'GET' });
+        const allResult = await allResp.json();
+        const allServices: Service[] = Array.isArray(allResult)
+            ? allResult
+            : (allResult?.data ?? []);
+        // Filter services that list this resource_id in any metadata field
+        const linked = allServices.filter((s: any) =>
+            s.resource_id === resourceId ||
+            (Array.isArray(s.resource_ids) && s.resource_ids.includes(resourceId))
+        );
+        return { data: linked };
+    }
+}
+
+/**
  * Associates a service with a resource.
  */
 export async function associateResourceService(resourceId: string, serviceId: string): Promise<void> {
     await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/services/${serviceId}`, {
         method: 'PUT',
+    });
+}
+
+/**
+ * Removes (disassociates) a service from a resource.
+ */
+export async function removeResourceService(resourceId: string, serviceId: string): Promise<void> {
+    await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/services/${serviceId}`, {
+        method: 'DELETE',
     });
 }
 

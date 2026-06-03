@@ -1,4 +1,9 @@
-import { getResources, getLocations, getResourceSchedule, ResourceScheduleSpan } from '../api/hapio';
+import {
+    getResources,
+    getLocations,
+    getResourceSchedule,
+    ResourceScheduleSpan,
+} from '../api/hapio';
 
 /** Fecha actual en formato YYYY-MM-DD */
 function todayStr(): string {
@@ -15,20 +20,16 @@ function addDaysStr(dateStr: string, days: number): string {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** Formatea una fecha ISO a algo legible (ej. 14/05/2026, 09:00 - 18:00) en su zona horaria nativa */
+/** Formatea una fecha ISO a algo legible en su zona horaria nativa */
 function formatScheduleSpan(span: ResourceScheduleSpan): string {
-    // Al igual que en BookingForm, extraemos el fragmento exacto y lo forzamos a UTC para evitar desvases del navegador local
     const startStrUtc = span.starts_at.substring(0, 19) + "Z";
-    const endStrUtc = span.ends_at.substring(0, 19) + "Z";
-
+    const endStrUtc   = span.ends_at.substring(0, 19) + "Z";
     const start = new Date(startStrUtc);
-    const end = new Date(endStrUtc);
-
+    const end   = new Date(endStrUtc);
     const pad = (n: number) => String(n).padStart(2, '0');
-    const dateStr = `${pad(start.getUTCDate())}/${pad(start.getUTCMonth() + 1)}/${start.getUTCFullYear()}`;
+    const dateStr   = `${pad(start.getUTCDate())}/${pad(start.getUTCMonth() + 1)}/${start.getUTCFullYear()}`;
     const startTime = `${pad(start.getUTCHours())}:${pad(start.getUTCMinutes())}`;
-    const endTime = `${pad(end.getUTCHours())}:${pad(end.getUTCMinutes())}`;
-
+    const endTime   = `${pad(end.getUTCHours())}:${pad(end.getUTCMinutes())}`;
     return `<strong>${dateStr}</strong>: ${startTime} - ${endTime}`;
 }
 
@@ -45,14 +46,15 @@ function buildISO(date: string, time: string): string {
 
 export function renderResourceSchedule(container: HTMLElement): void {
     const defaultFrom = todayStr();
-    const defaultTo = addDaysStr(defaultFrom, 7);
+    const defaultTo   = addDaysStr(defaultFrom, 7);
 
     container.innerHTML = `
         <div class="view-header">
-            <h2>Horarios del Recurso</h2>
-            <p>Consulta la disponibilidad calculada de un recurso, basándose en sus bloques de horario y bloques recurrentes configurados.</p>
+            <h2>Disponibilidad del Recurso</h2>
+            <p>Consulta los tramos horarios disponibles de un recurso en un rango de fechas y localización.</p>
         </div>
 
+        <!-- Selector de recurso y localización -->
         <div class="card">
             <form id="schedule-filter-form" class="form">
                 <div class="form-grid">
@@ -69,7 +71,6 @@ export function renderResourceSchedule(container: HTMLElement): void {
                         </select>
                     </div>
                 </div>
-
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="schedule-from">Desde (Fecha)</label>
@@ -80,35 +81,34 @@ export function renderResourceSchedule(container: HTMLElement): void {
                         <input type="date" id="schedule-to" name="to_date" value="${defaultTo}" required>
                     </div>
                 </div>
-
                 <div class="form-actions" style="margin-top: 1rem;">
                     <button type="submit" id="schedule-search-btn" class="btn btn-primary">Ver Disponibilidad</button>
                 </div>
             </form>
         </div>
 
+        <!-- Sección: Disponibilidad -->
         <div id="schedule-results" class="card hidden" style="margin-top: 2rem;">
             <h3>Resultados de Disponibilidad</h3>
             <div id="schedule-list" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                <!-- Resultados insertados aqui -->
+                <!-- Resultados insertados aquí -->
             </div>
         </div>
     `;
 
-    const form = container.querySelector('#schedule-filter-form') as HTMLFormElement;
+    const form           = container.querySelector('#schedule-filter-form') as HTMLFormElement;
     const resourceSelect = form.querySelector('#schedule-resource') as HTMLSelectElement;
     const locationSelect = form.querySelector('#schedule-location') as HTMLSelectElement;
-    const fromInput = form.querySelector('#schedule-from') as HTMLInputElement;
-    const toInput = form.querySelector('#schedule-to') as HTMLInputElement;
-    const resultsCard = container.querySelector('#schedule-results') as HTMLElement;
-    const scheduleList = container.querySelector('#schedule-list') as HTMLElement;
-    const searchBtn = form.querySelector('#schedule-search-btn') as HTMLButtonElement;
+    const fromInput      = form.querySelector('#schedule-from') as HTMLInputElement;
+    const toInput        = form.querySelector('#schedule-to') as HTMLInputElement;
+    const resultsCard    = container.querySelector('#schedule-results') as HTMLElement;
+    const scheduleList   = container.querySelector('#schedule-list') as HTMLElement;
+    const searchBtn      = form.querySelector('#schedule-search-btn') as HTMLButtonElement;
 
+    // ─── Carga de selects ─────────────────────────────────────────────────────
     async function loadSelects() {
         try {
-            const [resResp, locResp] = await Promise.all([
-                getResources(), getLocations()
-            ]);
+            const [resResp, locResp] = await Promise.all([getResources(), getLocations()]);
 
             resourceSelect.innerHTML = resResp.data.length
                 ? resResp.data.map(r => `<option value="${r.id}">${r.name}</option>`).join('')
@@ -119,56 +119,48 @@ export function renderResourceSchedule(container: HTMLElement): void {
                 : '<option value="">No hay localizaciones disponibles</option>';
 
         } catch (error) {
-            console.error('Error cargando selects para schedule:', error);
+            console.error('Error cargando selects:', error);
             resourceSelect.innerHTML = '<option value="">Error al cargar</option>';
             locationSelect.innerHTML = '<option value="">Error al cargar</option>';
         }
     }
 
+    // ─── Formulario de disponibilidad ─────────────────────────────────────────
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const resourceId = resourceSelect.value;
         const locationId = locationSelect.value;
-        const fromDate = fromInput.value;
-        const toDate = toInput.value;
+        const fromDate   = fromInput.value;
+        const toDate     = toInput.value;
 
-        if (!resourceId || !locationId || !fromDate || !toDate) {
-            return;
-        }
+        if (!resourceId || !locationId || !fromDate || !toDate) return;
 
         try {
-            searchBtn.disabled = true;
+            searchBtn.disabled    = true;
             searchBtn.textContent = 'Buscando...';
             resultsCard.classList.remove('hidden');
             scheduleList.innerHTML = '<p style="color: var(--text-secondary);">Consultando la API de Hapio...</p>';
 
-            // Convert to full ISO times as required by Hapio
             const fromISO = buildISO(fromDate, '00:00');
-            const toISO = buildISO(toDate, '23:59');
+            const toISO   = buildISO(toDate, '23:59');
 
-            const resp = await getResourceSchedule(resourceId, {
-                location: locationId,
-                from: fromISO,
-                to: toISO
-            });
-
+            const resp  = await getResourceSchedule(resourceId, { location: locationId, from: fromISO, to: toISO });
             const spans = resp.data;
 
             if (spans.length === 0) {
                 scheduleList.innerHTML = '<p style="color: var(--error);">No hay horarios libres o configurados en este rango de fechas para el recurso seleccionado en esa localización.</p>';
             } else {
                 scheduleList.innerHTML = spans.map(span =>
-                    `<div style="padding: 1rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-color);">
+                    `<div style="padding:1rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-color);">
                         ${formatScheduleSpan(span)}
                     </div>`
                 ).join('');
             }
-
         } catch (error: any) {
             scheduleList.innerHTML = `<p style="color: var(--error);">Error al consultar disponibilidad: ${error.message}</p>`;
         } finally {
-            searchBtn.disabled = false;
+            searchBtn.disabled    = false;
             searchBtn.textContent = 'Ver Disponibilidad';
         }
     });

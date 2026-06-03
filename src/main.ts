@@ -69,9 +69,9 @@ function renderApp(): void {
               <span class="nav-link-icon">.</span>
               Crear Nuevo Recurso
             </div>
-            <div class="nav-link" data-view="resources-schedule" data-tooltip="Ver horarios del recurso">
+            <div class="nav-link" data-view="resources-schedule" data-tooltip="Ver detalles y horarios del recurso">
               <span class="nav-link-icon">.</span>
-              Ver Horarios del Recurso
+              Detalles Del Recurso
             </div>
           </div>
         </div>
