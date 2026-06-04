@@ -417,6 +417,11 @@ export interface RecurringScheduleData {
     start_date: string;
     end_date?: string | null;
     interval?: number;
+    /** Metadatos personalizados. Usamos metadata.services[] para restringir servicios por horario. */
+    metadata?: {
+        services?: string[];   // IDs de servicios disponibles en este horario
+        [key: string]: any;
+    };
 }
 
 export interface RecurringSchedule extends RecurringScheduleData {
@@ -528,6 +533,23 @@ export async function getRecurringSchedules(resourceId: string): Promise<HapioRe
     });
 
     return await response.json();
+}
+
+/**
+ * Updates a recurring schedule (PATCH).
+ */
+export async function updateRecurringSchedule(
+    resourceId: string,
+    scheduleId: string,
+    data: Partial<RecurringScheduleData>
+): Promise<RecurringSchedule> {
+    const response = await fetchWithTimeout(`${BASE_URL}/resources/${resourceId}/recurring-schedules/${scheduleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    return result.data || result;
 }
 
 /**

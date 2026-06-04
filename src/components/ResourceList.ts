@@ -6,7 +6,6 @@ import {
     getServices,
     getRecurringSchedules,
     getScheduleBlocks,
-    getLocations,
     Resource,
 } from '../api/hapio';
 
@@ -198,12 +197,11 @@ export function renderResourceList(container: HTMLElement): void {
         setTimeout(() => statusCard.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
 
         try {
-            const [servicesResp, allServicesResp, schedulesResp, blocksResp, locResp] = await Promise.allSettled([
+            const [servicesResp, allServicesResp, schedulesResp, blocksResp] = await Promise.allSettled([
                 getResourceServices(resourceId),
                 getServices(),
                 getRecurringSchedules(resourceId),
                 getScheduleBlocks(resourceId),
-                getLocations(),
             ]);
 
             // Los vínculos resource→service solo traen IDs; cruzamos con el catálogo completo
@@ -211,7 +209,6 @@ export function renderResourceList(container: HTMLElement): void {
             const allServices   = allServicesResp.status  === 'fulfilled' ? (allServicesResp.value?.data  ?? []) : [];
             const schedules     = schedulesResp.status    === 'fulfilled' ? (schedulesResp.value?.data    ?? []) : [];
             const blocks        = blocksResp.status       === 'fulfilled' ? (blocksResp.value?.data       ?? []) : [];
-            const locations     = locResp.status          === 'fulfilled' ? (locResp.value?.data          ?? []) : [];
 
             // Construir mapa id→Service del catálogo
             const serviceMap = new Map(allServices.map((s: any) => [s.id, s]));
@@ -327,10 +324,19 @@ export function renderResourceList(container: HTMLElement): void {
                 </div>`).join('');
 
             // ── Item: Localizaciones (expandible) ──────────────────────────────
-            const locOk     = locations.length > 0;
+            // Hapio embebe el objeto `location` completo dentro de cada schedule.
+            // Deduplicamos por id para no mostrar duplicados si hay varios schedules
+            // apuntando a la misma localización.
+            const locationMap = new Map<string, any>();
+            schedules.forEach((s: any) => {
+                if (s.location?.id) locationMap.set(s.location.id, s.location);
+            });
+            const resourceLocations = Array.from(locationMap.values());
+
+            const locOk     = resourceLocations.length > 0;
             const locDetail = locOk
-                ? `${locations.length} localización(es) — haz clic para expandir`
-                : 'Sin localizaciones creadas';
+                ? `${resourceLocations.length} localización(es) vinculada(s) — haz clic para expandir`
+                : 'Sin localizaciones asignadas (configura un horario recurrente primero)';
 
             const strategyLabel: Record<string, string> = {
                 randomize:  'Aleatoria',
@@ -339,7 +345,7 @@ export function renderResourceList(container: HTMLElement): void {
             };
 
             const locationsCardsHtml = locOk
-                ? locations.map((l: any) => `
+                ? resourceLocations.map((l: any) => `
                     <div style="
                         display:flex; align-items:flex-start; gap:0.7rem;
                         padding:0.7rem 0.85rem; border-radius:8px;

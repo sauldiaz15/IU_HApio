@@ -1,4 +1,4 @@
-import { createBooking, getResources, getServices, getLocations, BookingData, associateResourceService, getResourceSchedule } from '../api/hapio';
+import { createBooking, getResources, getResourceServices, getServices, getRecurringSchedules, getLocations, BookingData, associateResourceService, getResourceSchedule } from '../api/hapio';
 
 const SLOT_DURATION_MIN = 30; // duración predeterminada visual si no hay API
 
@@ -53,8 +53,8 @@ export function renderBookingForm(container: HTMLElement): void {
                         </div>
                         <div class="form-group">
                             <label for="booking-service">Servicio</label>
-                            <select id="booking-service" name="service_id" required>
-                                <option value="">Cargando servicios...</option>
+                            <select id="booking-service" name="service_id" required disabled>
+                                <option value="">Primero selecciona un recurso</option>
                             </select>
                         </div>
                     </div>
@@ -220,7 +220,13 @@ export function renderBookingForm(container: HTMLElement): void {
         }
     }
 
-    [resourceSelect, serviceSelect, locationSelect, dateInput].forEach(el => {
+    // Al cambiar el recurso → recargar servicios
+    resourceSelect.addEventListener('change', () => {
+        loadServicesForResource(resourceSelect.value);
+    });
+
+    // Servicio, localización y fecha disparan recálculo de slots
+    [serviceSelect, locationSelect, dateInput].forEach(el => {
         el.addEventListener('change', updateAvailableSlots);
     });
 
@@ -258,24 +264,86 @@ export function renderBookingForm(container: HTMLElement): void {
         }, 0);
     });
 
+    // ─── Carga de servicios Y localizaciones según recurso seleccionado ─────────
+    async function loadServicesForResource(resourceId: string) {
+        serviceSelect.disabled = true;
+        serviceSelect.innerHTML = '<option value="">Cargando servicios...</option>';
+        locationSelect.disabled = true;
+        locationSelect.innerHTML = '<option value="">Cargando localizaciones...</option>';
+        // Resetear slots al cambiar recurso
+        startTimeSel.innerHTML = '<option value="">Completa opciones para ver horas</option>';
+        startTimeSel.disabled = true;
+        endTimeSel.innerHTML = '<option value="">Se calculará al elegir inicio</option>';
+
+        if (!resourceId) {
+            serviceSelect.innerHTML = '<option value="">Primero selecciona un recurso</option>';
+            locationSelect.innerHTML = '<option value="">Primero selecciona un recurso</option>';
+            return;
+        }
+
+        try {
+            const [svcResp, allSvcResp, schedulesResp] = await Promise.all([
+                getResourceServices(resourceId),
+                getServices(),
+                getRecurringSchedules(resourceId),
+            ]);
+
+            // ─ Servicios: los vínculos solo traen IDs, cruzamos con el catálogo completo ─
+            const serviceLinks  = svcResp.data as any[];
+            const allServices   = allSvcResp.data as any[];
+            const serviceMap    = new Map(allServices.map((s: any) => [s.id, s]));
+            const services      = serviceLinks.map((link: any) => {
+                const linkedId = link.service_id ?? link.id ?? link;
+                return serviceMap.get(linkedId) ?? link;
+            }).filter((s: any) => s?.id && s?.name);
+
+            if (services.length) {
+                serviceSelect.innerHTML = '<option value="">-- Seleccionar servicio --</option>' +
+                    services.map((s: any) => `<option value="${s.id}">${s.name}</option>`).join('');
+                serviceSelect.disabled = false;
+            } else {
+                serviceSelect.innerHTML = '<option value="">Sin servicios asignados a este recurso</option>';
+            }
+
+            // ─ Localizaciones: Hapio embebe el objeto `location` completo en cada schedule ─
+            const locationMap = new Map<string, any>();
+            schedulesResp.data.forEach((s: any) => {
+                if (s.location?.id) locationMap.set(s.location.id, s.location);
+            });
+            const resourceLocations = Array.from(locationMap.values());
+
+            if (resourceLocations.length) {
+                locationSelect.innerHTML = '<option value="">-- Seleccionar localización --</option>' +
+                    resourceLocations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+                locationSelect.disabled = false;
+            } else {
+                locationSelect.innerHTML = '<option value="">Sin localizaciones vinculadas a este recurso</option>';
+            }
+
+        } catch (error: any) {
+            serviceSelect.innerHTML = '<option value="">Error al cargar servicios</option>';
+            locationSelect.innerHTML = '<option value="">Error al cargar localizaciones</option>';
+            console.error('Error cargando datos del recurso:', error);
+        }
+
+        updateAvailableSlots();
+    }
+
     // ─── Carga de selectores dinámicos ────────────────────────────────────────
     async function loadSelects() {
         try {
-            const [resResp, svcResp, locResp] = await Promise.all([
-                getResources(), getServices(), getLocations()
+            const [resResp, locResp] = await Promise.all([
+                getResources(), getLocations()
             ]);
 
-            resourceSelect.innerHTML = resResp.data.length
-                ? resResp.data.map(r => `<option value="${r.id}">${r.name}</option>`).join('')
-                : '<option value="">No hay recursos disponibles</option>';
-
-            serviceSelect.innerHTML = svcResp.data.length
-                ? svcResp.data.map(s => `<option value="${s.id}">${s.name}</option>`).join('')
-                : '<option value="">No hay servicios disponibles</option>';
-
-            locationSelect.innerHTML = locResp.data.length
-                ? locResp.data.map(l => `<option value="${l.id}">${l.name}</option>`).join('')
-                : '<option value="">No hay localizaciones disponibles</option>';
+            if (resResp.data.length) {
+                resourceSelect.innerHTML = resResp.data.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+                // Cargar servicios y localizaciones del primer recurso automáticamente
+                await loadServicesForResource(resResp.data[0].id);
+            } else {
+                resourceSelect.innerHTML = '<option value="">No hay recursos disponibles</option>';
+                locationSelect.innerHTML = '<option value="">No hay localizaciones disponibles</option>';
+            }
 
         } catch (error: any) {
             resourceSelect.innerHTML = '<option value="">Error al cargar</option>';
@@ -285,7 +353,6 @@ export function renderBookingForm(container: HTMLElement): void {
             messageEl.className = 'message error';
         }
 
-        // Llamar inmediatamente a updateAvailableSlots después de popular los selects
         updateAvailableSlots();
     }
 
