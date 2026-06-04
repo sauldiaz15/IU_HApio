@@ -272,7 +272,7 @@ export function renderServiceList(container: HTMLElement): void {
     }
 
     // ─── Modal: renderizar lista con sliders ──────────────────────────────────
-    function renderModalList(serviceId: string, serviceName: string, resources: Resource[], linkedIds: Set<string>) {
+    function renderModalList(serviceId: string, _serviceName: string, resources: Resource[], linkedIds: Set<string>) {
         modalList.innerHTML = resources.map(res => {
             const linked  = linkedIds.has(res.id);
             const checkId = `res-toggle-${res.id}`;

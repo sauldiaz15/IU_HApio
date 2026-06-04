@@ -1,4 +1,4 @@
-import { createBooking, getResources, getResourceServices, getServices, getRecurringSchedules, getLocations, BookingData, associateResourceService, getResourceSchedule } from '../api/hapio';
+import { createBooking, getResources, getResourceServices, getServices, getRecurringSchedules, BookingData, associateResourceService, getResourceSchedule } from '../api/hapio';
 
 const SLOT_DURATION_MIN = 30; // duración predeterminada visual si no hay API
 
@@ -332,9 +332,7 @@ export function renderBookingForm(container: HTMLElement): void {
     // ─── Carga de selectores dinámicos ────────────────────────────────────────
     async function loadSelects() {
         try {
-            const [resResp, locResp] = await Promise.all([
-                getResources(), getLocations()
-            ]);
+            const resResp = await getResources();
 
             if (resResp.data.length) {
                 resourceSelect.innerHTML = resResp.data.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
