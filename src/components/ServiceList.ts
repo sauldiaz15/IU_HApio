@@ -12,59 +12,89 @@ import {
 
 export function renderServiceList(container: HTMLElement): void {
     container.innerHTML = `
-        <div class="view-header">
+        <style>
+            .main-content {
+                overflow: hidden !important;
+            }
+        </style>
+        <div class="view-header" style="margin-bottom: 1rem;">
             <h2>Gestión de Servicios</h2>
-            <p>Listado de todos los servicios disponibles en el proyecto. Puedes asociar cada servicio a uno o más recursos.</p>
-        </div>
-        <div id="service-list-content">
-            <div class="loading-spinner"></div>
+            <p style="margin-bottom: 0;">Selecciona un servicio de la lista para ver sus detalles, configurar su estado y asociarlo con los recursos disponibles.</p>
         </div>
 
-        <!-- Modal: Asociar Recursos -->
-        <div id="assoc-modal-overlay" style="
-            display: none; position: fixed; inset: 0; z-index: 1000;
-            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
-            align-items: center; justify-content: center;
+        <div class="services-split-layout" style="
+            display: flex;
+            gap: 1.5rem;
+            height: calc(100vh - 180px);
+            align-items: stretch;
         ">
-            <div id="assoc-modal" style="
-                background: var(--card-bg, #1e293b); border: 1px solid var(--border-color);
-                border-radius: 16px; padding: 2rem; width: 100%; max-width: 480px;
-                box-shadow: 0 25px 60px rgba(0,0,0,0.5); position: relative;
+            <!-- Left Side: Services List (Master) -->
+            <div id="services-master" style="
+                width: 360px;
+                flex-shrink: 0;
+                background: rgba(30, 41, 59, 0.25);
+                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+                border-radius: 16px;
+                padding: 1.25rem;
+                display: flex;
+                flex-direction: column;
+                gap: 0.75rem;
+                overflow-y: auto;
             ">
-                <button id="assoc-modal-close" style="
-                    position: absolute; top: 1rem; right: 1rem;
-                    background: none; border: none; color: var(--text-secondary);
-                    font-size: 1.4rem; cursor: pointer; line-height: 1;
-                ">&times;</button>
-                <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.4rem;">
-                    <span style="font-size:1.3rem;">🔗</span>
-                    <h3 style="margin:0; font-size:1.1rem;">Recursos del Servicio</h3>
+                <div class="loading-spinner"></div>
+            </div>
+
+            <!-- Right Side: Service Details & Resource Associations (Detail) -->
+            <div id="services-detail" style="
+                flex: 1;
+                background: var(--card-bg, #1e293b);
+                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+                border-radius: 16px;
+                padding: 1.5rem;
+                display: flex;
+                flex-direction: column;
+                gap: 1.25rem;
+                overflow: hidden;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+            ">
+                <div class="empty-state" style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100%;
+                    color: var(--text-secondary, #94a3b8);
+                    text-align: center;
+                    gap: 1.25rem;
+                ">
+                    <span style="font-size: 3.5rem; opacity: 0.7;">👈</span>
+                    <div>
+                        <h3 style="margin: 0 0 0.5rem 0; color: white; font-size: 1.15rem;">Ningún servicio seleccionado</h3>
+                        <p style="margin: 0; font-size: 0.85rem; max-width: 300px; line-height: 1.6;">
+                            Selecciona un servicio en la barra de la izquierda para ver su información y asignar recursos.
+                        </p>
+                    </div>
                 </div>
-                <p id="assoc-modal-subtitle" style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:1.25rem;"></p>
-                <div id="assoc-modal-loading" style="color:var(--text-secondary); font-size:0.9rem;">Cargando recursos...</div>
-                <div id="assoc-modal-list" style="flex-direction:column; gap:0.6rem; max-height:340px; overflow-y:auto; display:none;"></div>
             </div>
         </div>
     `;
 
-    const listContent   = container.querySelector('#service-list-content') as HTMLElement;
-    const modalOverlay  = container.querySelector('#assoc-modal-overlay') as HTMLElement;
-    const modalClose    = container.querySelector('#assoc-modal-close') as HTMLButtonElement;
-    const modalSubtitle = container.querySelector('#assoc-modal-subtitle') as HTMLElement;
-    const modalLoading  = container.querySelector('#assoc-modal-loading') as HTMLElement;
-    const modalList     = container.querySelector('#assoc-modal-list') as HTMLElement;
+    const masterContainer = container.querySelector('#services-master') as HTMLElement;
+    const detailContainer = container.querySelector('#services-detail') as HTMLElement;
 
-    // ─── Cerrar modal ──────────────────────────────────────────────────────────
-    modalClose.addEventListener('click', closeModal);
-    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+    let servicesList: Service[] = [];
+    let selectedServiceId: string | null = null;
 
-    function openModal()  { modalOverlay.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
-    function closeModal() { modalOverlay.style.display = 'none'; document.body.style.overflow = ''; }
-
-    // ─── Helpers de formato ────────────────────────────────────────────────────
+    // Helpers
     const serviceTypeLabels: Record<string, string> = {
         'fixed': 'Fijo', 'flexible': 'Flexible', 'day': 'Día completo'
+    };
+
+    const typeColors: Record<string, string> = {
+        fixed: 'rgba(99,102,241,0.15)', flexible: 'rgba(234,179,8,0.15)', day: 'rgba(34,197,94,0.15)',
+    };
+    const typeTextColors: Record<string, string> = {
+        fixed: '#818cf8', flexible: '#eab308', day: '#22c55e',
     };
 
     function parseISOToHuman(val: string | number | null | undefined): string {
@@ -85,163 +115,408 @@ export function renderServiceList(container: HTMLElement): void {
         return result.trim() || iso;
     }
 
-    // ─── Carga principal ───────────────────────────────────────────────────────
-    async function loadServices() {
-        listContent.innerHTML = '<div class="loading-spinner"></div>';
+    function getDurationText(service: Service): string {
+        if (service.type === 'fixed') {
+            return parseISOToHuman(service.duration);
+        } else if (service.type === 'flexible') {
+            const min = parseISOToHuman(service.min_duration);
+            const max = parseISOToHuman(service.max_duration);
+            return max !== '-' ? `${min} - ${max}` : `Desde ${min}`;
+        } else if (service.type === 'day') {
+            const min = parseISOToHuman(service.min_days);
+            const max = parseISOToHuman(service.max_days);
+            return max !== '-' ? `${min} - ${max}` : `Desde ${min}`;
+        }
+        return '-';
+    }
+
+    // Main loader
+    async function loadServices(autoSelectFirst = true) {
+        masterContainer.innerHTML = '<div class="loading-spinner"></div>';
         try {
             const response = await getServices();
-            const services = response.data;
-            if (services.length === 0) {
-                listContent.innerHTML = `
-                    <div class="card">
-                        <p style="text-align:center; color:#64748b; padding:2rem;">No hay servicios creados todavía.</p>
-                    </div>
+            servicesList = response.data || [];
+            
+            if (servicesList.length === 0) {
+                masterContainer.innerHTML = `
+                    <p style="text-align:center; color:var(--text-secondary); padding:2rem; font-size:0.9rem; margin:0;">
+                        No hay servicios creados.
+                    </p>
                 `;
+                renderEmptyState();
                 return;
             }
-            renderCards(services);
+
+            renderMasterList();
+
+            // Auto-select
+            if (autoSelectFirst && servicesList.length > 0) {
+                // If we had a selected service, try to keep it, otherwise select first
+                const exists = servicesList.some(s => s.id === selectedServiceId);
+                const nextId = exists ? selectedServiceId : servicesList[0].id;
+                selectService(nextId!);
+            } else if (selectedServiceId) {
+                const exists = servicesList.some(s => s.id === selectedServiceId);
+                if (exists) {
+                    selectService(selectedServiceId);
+                } else {
+                    renderEmptyState();
+                }
+            }
         } catch (error: any) {
-            listContent.innerHTML = `<div class="status-message error" style="display:block;">Error al cargar los servicios: ${error.message}</div>`;
+            masterContainer.innerHTML = `
+                <div class="status-message error" style="display:block; margin:0; font-size:0.85rem;">
+                    Error: ${error.message}
+                </div>
+            `;
         }
     }
 
-    // ─── Grid de tarjetas ─────────────────────────────────────────────────────
-    function renderCards(services: Service[]) {
-        const typeColors: Record<string, string> = {
-            fixed: 'rgba(99,102,241,0.15)', flexible: 'rgba(234,179,8,0.15)', day: 'rgba(34,197,94,0.15)',
-        };
-        const typeTextColors: Record<string, string> = {
-            fixed: '#818cf8', flexible: '#eab308', day: '#22c55e',
-        };
+    // Render left panel
+    function renderMasterList() {
+        masterContainer.innerHTML = servicesList.map(service => {
+            const typeLabel = serviceTypeLabels[service.type] || service.type;
+            const durationText = getDurationText(service);
+            const isSelected = service.id === selectedServiceId;
+            
+            return `
+                <div class="service-item-row" data-id="${service.id}" style="
+                    background: ${isSelected ? 'rgba(99, 102, 241, 0.08)' : 'rgba(30, 41, 59, 0.4)'};
+                    border: 1px solid ${isSelected ? 'rgba(99, 102, 241, 0.5)' : 'var(--border-color, rgba(255, 255, 255, 0.08))'};
+                    border-left: 3px solid ${isSelected ? '#818cf8' : 'transparent'};
+                    border-radius: 12px;
+                    padding: 0.85rem 1rem;
+                    cursor: pointer;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.4rem;
+                    transition: all 0.2s ease;
+                    opacity: ${service.enabled ? '1' : '0.6'};
+                " onmouseover="if(this.dataset.selected !== 'true') this.style.borderColor='rgba(99, 102, 241, 0.35)'"
+                   onmouseout="if(this.dataset.selected !== 'true') this.style.borderColor='var(--border-color, rgba(255,255,255,0.08))'">
+                    
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
+                        <span style="font-weight: 600; font-size: 0.95rem; color: white; word-break: break-word;">
+                            ${service.name}
+                        </span>
+                        <span style="
+                            font-size: 0.65rem;
+                            font-weight: 600;
+                            padding: 0.15rem 0.45rem;
+                            border-radius: 20px;
+                            background: ${typeColors[service.type] || 'rgba(99,102,241,0.15)'};
+                            color: ${typeTextColors[service.type] || '#818cf8'};
+                            flex-shrink: 0;
+                        ">${typeLabel}</span>
+                    </div>
 
-        listContent.innerHTML = `
-            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1.25rem;">
-                ${services.map(service => {
-                    let durationInfo = '-';
-                    if (service.type === 'fixed') {
-                        durationInfo = parseISOToHuman(service.duration);
-                    } else if (service.type === 'flexible') {
-                        const min = parseISOToHuman(service.min_duration);
-                        const max = parseISOToHuman(service.max_duration);
-                        durationInfo = max !== '-' ? `${min} - ${max}` : `Desde ${min}`;
-                    } else if (service.type === 'day') {
-                        const min = parseISOToHuman(service.min_days);
-                        const max = parseISOToHuman(service.max_days);
-                        durationInfo = max !== '-' ? `${min} - ${max}` : `Desde ${min}`;
-                    }
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.15rem;">
+                        <span style="display: flex; align-items: center; gap: 0.3rem;">
+                            <span>⏱</span> ${durationText}
+                        </span>
+                        ${service.price ? `
+                        <span style="display: flex; align-items: center; gap: 0.2rem;">
+                            <span>$</span>${parseFloat(service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
 
-                    const typeLabel    = serviceTypeLabels[service.type] || service.type;
-                    const priceDisplay = service.price
-                        ? `$${parseFloat(service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
-                        : null;
-
-                    return `
-                        <div style="
-                            background:var(--card-bg,#1e293b); border:1px solid var(--border-color);
-                            border-radius:14px; padding:1.25rem 1.25rem 1rem;
-                            display:flex; flex-direction:column; gap:0.75rem;
-                            transition:box-shadow 0.2s,border-color 0.2s; position:relative;
-                        " onmouseover="this.style.boxShadow='0 8px 30px rgba(0,0,0,0.25)';this.style.borderColor='rgba(99,102,241,0.35)'"
-                           onmouseout="this.style.boxShadow='';this.style.borderColor='var(--border-color)'">
-
-                            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">
-                                <div style="flex:1;min-width:0;">
-                                    <div style="font-weight:700;font-size:1rem;line-height:1.3;word-break:break-word;">${service.name}</div>
-                                    <div style="margin-top:0.35rem;">
-                                        <span style="display:inline-block;font-size:0.72rem;font-weight:600;padding:0.2rem 0.6rem;border-radius:20px;background:${typeColors[service.type]||'rgba(99,102,241,0.15)'};color:${typeTextColors[service.type]||'#818cf8'};">${typeLabel}</span>
-                                    </div>
-                                </div>
-                                <label class="switch" style="flex-shrink:0;margin-top:2px;">
-                                    <input type="checkbox" class="service-toggle" data-id="${service.id}" ${service.enabled ? 'checked' : ''}>
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-
-                            <div style="display:flex;gap:1rem;flex-wrap:wrap;">
-                                <div style="display:flex;align-items:center;gap:0.4rem;">
-                                    <span style="font-size:0.95rem;">⏱</span>
-                                    <span style="font-size:0.82rem;color:var(--text-secondary);">${durationInfo}</span>
-                                </div>
-                                ${priceDisplay ? `<div style="display:flex;align-items:center;gap:0.4rem;"><span style="font-size:0.95rem;">💲</span><span style="font-size:0.82rem;color:var(--text-secondary);">${priceDisplay}</span></div>` : ''}
-                            </div>
-
-                            <div style="height:1px;background:var(--border-color);margin:0 -0.25rem;"></div>
-
-                            <div style="display:flex;gap:0.5rem;">
-                                <button class="btn btn-sm associate-service"
-                                    data-id="${service.id}" data-name="${service.name}"
-                                    style="flex:1;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.35);color:#818cf8;font-weight:600;font-size:0.8rem;"
-                                >👥 Recursos</button>
-                                <button class="btn btn-danger btn-sm delete-service" data-id="${service.id}" style="font-size:0.8rem;">Eliminar</button>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-
-        // Toggle habilitado/deshabilitado
-        listContent.querySelectorAll('.service-toggle').forEach(toggle => {
-            toggle.addEventListener('change', async (e) => {
-                const cb        = e.currentTarget as HTMLInputElement;
-                const serviceId = cb.dataset.id!;
-                const isEnabled = cb.checked;
-                try {
-                    cb.disabled = true;
-                    await updateService(serviceId, { enabled: isEnabled });
-                } catch (error: any) {
-                    alert(`Error al actualizar el servicio: ${error.message}`);
-                    cb.checked = !isEnabled;
-                } finally {
-                    cb.disabled = false;
-                }
+        // Apply selected marker datasets
+        masterContainer.querySelectorAll<HTMLElement>('.service-item-row').forEach(row => {
+            const id = row.dataset.id!;
+            if (id === selectedServiceId) {
+                row.dataset.selected = 'true';
+            }
+            row.addEventListener('click', () => {
+                selectService(id);
             });
-        });
-
-        // Eliminar
-        listContent.querySelectorAll('.delete-service').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const button    = e.currentTarget as HTMLButtonElement;
-                const serviceId = button.dataset.id!;
-                if (confirm('¿Estás seguro de que deseas eliminar este servicio?')) {
-                    try {
-                        button.disabled    = true;
-                        button.textContent = '...';
-                        await deleteService(serviceId);
-                        loadServices();
-                    } catch (error: any) {
-                        alert(`Error al eliminar el servicio: ${error.message}`);
-                        button.disabled    = false;
-                        button.textContent = 'Eliminar';
-                    }
-                }
-            });
-        });
-
-        // Abrir modal de recursos
-        listContent.querySelectorAll<HTMLButtonElement>('.associate-service').forEach(btn => {
-            btn.addEventListener('click', () => openAssocModal(btn.dataset.id!, btn.dataset.name!));
         });
     }
 
-    // ─── Modal: abrir y cargar recursos ───────────────────────────────────────
-    async function openAssocModal(serviceId: string, serviceName: string) {
-        modalSubtitle.textContent  = `Servicio: ${serviceName}`;
-        modalLoading.style.display = 'block';
-        modalList.style.display    = 'none';
-        modalLoading.textContent   = 'Cargando recursos...';
-        openModal();
+    function renderEmptyState() {
+        selectedServiceId = null;
+        detailContainer.innerHTML = `
+            <div class="empty-state" style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                color: var(--text-secondary, #94a3b8);
+                text-align: center;
+                gap: 1.25rem;
+            ">
+                <span style="font-size: 3.5rem; opacity: 0.7;">👈</span>
+                <div>
+                    <h3 style="margin: 0 0 0.5rem 0; color: white; font-size: 1.15rem;">Ningún servicio seleccionado</h3>
+                    <p style="margin: 0; font-size: 0.85rem; max-width: 300px; line-height: 1.6;">
+                        Selecciona un servicio en la barra de la izquierda para ver su información y asignar recursos.
+                    </p>
+                </div>
+            </div>
+        `;
+    }
 
+    // Select a service and load detail pane
+    function selectService(id: string) {
+        selectedServiceId = id;
+        
+        // Update active class in DOM immediately for snappy feel
+        masterContainer.querySelectorAll<HTMLElement>('.service-item-row').forEach(row => {
+            const isCurrent = row.dataset.id === id;
+            row.dataset.selected = isCurrent ? 'true' : 'false';
+            row.style.background = isCurrent ? 'rgba(99, 102, 241, 0.08)' : 'rgba(30, 41, 59, 0.4)';
+            row.style.borderColor = isCurrent ? 'rgba(99, 102, 241, 0.5)' : 'var(--border-color, rgba(255, 255, 255, 0.08))';
+            row.style.borderLeftColor = isCurrent ? '#818cf8' : 'transparent';
+        });
+
+        const service = servicesList.find(s => s.id === id);
+        if (!service) {
+            renderEmptyState();
+            return;
+        }
+
+        renderDetailPane(service);
+    }
+
+    // Render right detail view
+    function renderDetailPane(service: Service) {
+        const typeLabel = serviceTypeLabels[service.type] || service.type;
+        const durationText = getDurationText(service);
+        const priceDisplay = service.price
+            ? `$${parseFloat(service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+            : null;
+
+        detailContainer.innerHTML = `
+            <!-- Header Block -->
+            <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 1rem;
+                border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+                padding-bottom: 1.25rem;
+            ">
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.4rem;">
+                        <h3 style="margin: 0; font-size: 1.4rem; font-weight: 700; color: white; word-break: break-word;">
+                            ${service.name}
+                        </h3>
+                        <span style="
+                            font-size: 0.72rem;
+                            font-weight: 600;
+                            padding: 0.15rem 0.55rem;
+                            border-radius: 20px;
+                            background: ${typeColors[service.type] || 'rgba(99,102,241,0.15)'};
+                            color: ${typeTextColors[service.type] || '#818cf8'};
+                        ">${typeLabel}</span>
+                    </div>
+                    <p style="margin: 0; font-size: 0.82rem; color: var(--text-secondary);">
+                        ID: <code style="font-family: monospace; font-size: 0.78rem; background: rgba(255,255,255,0.05); padding: 0.1rem 0.3rem; border-radius: 4px;">${service.id}</code>
+                    </p>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0;">
+                    <span id="detail-enabled-label" style="
+                        font-size: 0.8rem;
+                        font-weight: 600;
+                        color: ${service.enabled ? '#22c55e' : 'var(--text-secondary)'};
+                    ">${service.enabled ? 'Habilitado' : 'Deshabilitado'}</span>
+                    <label class="switch" style="margin: 0;">
+                        <input type="checkbox" id="detail-service-toggle" ${service.enabled ? 'checked' : ''}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Details Attributes Row -->
+            <div style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 1rem;
+                background: rgba(15, 23, 42, 0.2);
+                padding: 0.75rem 1rem;
+                border-radius: 10px;
+                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+                font-size: 0.8rem;
+            ">
+                <div style="display: flex; align-items: center; gap: 0.35rem;">
+                    <span style="color: var(--text-secondary);">⏱ Duración:</span>
+                    <strong style="color: white;">${durationText}</strong>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.35rem;">
+                    <span style="color: var(--text-secondary);">💲 Precio:</span>
+                    <strong style="color: white;">${priceDisplay || 'Sin costo'}</strong>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.35rem;">
+                    <span style="color: var(--text-secondary);">⚙ Tipo:</span>
+                    <strong style="color: white;">${typeLabel}</strong>
+                </div>
+                ${service.bookable_interval ? `
+                <div style="display: flex; align-items: center; gap: 0.35rem;">
+                    <span style="color: var(--text-secondary);">🔄 Intervalo:</span>
+                    <strong style="color: white;">${parseISOToHuman(service.bookable_interval)}</strong>
+                </div>` : ''}
+                ${service.buffer_time_before ? `
+                <div style="display: flex; align-items: center; gap: 0.35rem;">
+                    <span style="color: var(--text-secondary);">⏳ Buffer Ant:</span>
+                    <strong style="color: white;">${parseISOToHuman(service.buffer_time_before)}</strong>
+                </div>` : ''}
+                ${service.buffer_time_after ? `
+                <div style="display: flex; align-items: center; gap: 0.35rem;">
+                    <span style="color: var(--text-secondary);">⏳ Buffer Post:</span>
+                    <strong style="color: white;">${parseISOToHuman(service.buffer_time_after)}</strong>
+                </div>` : ''}
+            </div>
+
+            <!-- Resource Associations Section -->
+            <div style="
+                display: flex;
+                flex-direction: column;
+                gap: 0.85rem;
+                flex: 1;
+                min-height: 0;
+            ">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
+                    <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: white; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>👥</span> Recursos del Servicio
+                    </h4>
+                    <span id="detail-resources-count" style="
+                        font-size: 0.7rem;
+                        color: var(--text-secondary);
+                        font-weight: 600;
+                        background: rgba(255, 255, 255, 0.05);
+                        padding: 0.2rem 0.6rem;
+                        border-radius: 20px;
+                    ">Cargando...</span>
+                </div>
+
+                <!-- Live Search Box -->
+                <div style="position: relative;">
+                    <input type="text" id="resource-search" placeholder="Buscar recurso por nombre..." style="
+                        padding: 0.6rem 1rem 0.6rem 2.2rem;
+                        background: rgba(15, 23, 42, 0.35);
+                        border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+                        border-radius: 10px;
+                        color: white;
+                        font-size: 0.82rem;
+                        width: 100%;
+                        box-sizing: border-box;
+                    ">
+                    <span style="
+                        position: absolute;
+                        left: 0.8rem;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        font-size: 0.85rem;
+                        color: var(--text-secondary);
+                    ">🔍</span>
+                </div>
+
+                <!-- Resources List Container -->
+                <div id="detail-resource-list" style="
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.5rem;
+                    flex: 1;
+                    min-height: 0;
+                    overflow-y: auto;
+                    padding-right: 0.25rem;
+                    scrollbar-width: thin;
+                ">
+                    <div class="loading-spinner" style="margin: 2rem auto;"></div>
+                </div>
+            </div>
+
+            <!-- Footer Block: Delete Button -->
+            <div style="
+                border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+                padding-top: 1.25rem;
+                display: flex;
+                justify-content: flex-end;
+            ">
+                <button id="detail-delete-btn" class="btn btn-danger btn-sm" style="
+                    display: flex;
+                    align-items: center;
+                    gap: 0.4rem;
+                    padding: 0.55rem 1.25rem;
+                    font-weight: 600;
+                    font-size: 0.82rem;
+                ">
+                    🗑️ Eliminar Servicio
+                </button>
+            </div>
+        `;
+
+        // Event listener: Service Habilitar/Deshabilitar toggle
+        const serviceToggle = detailContainer.querySelector('#detail-service-toggle') as HTMLInputElement;
+        const enabledLabel = detailContainer.querySelector('#detail-enabled-label') as HTMLElement;
+        serviceToggle.addEventListener('change', async () => {
+            const isEnabled = serviceToggle.checked;
+            serviceToggle.disabled = true;
+            try {
+                await updateService(service.id, { enabled: isEnabled });
+                // Update local model
+                service.enabled = isEnabled;
+                if (enabledLabel) {
+                    enabledLabel.textContent = isEnabled ? 'Habilitado' : 'Deshabilitado';
+                    enabledLabel.style.color = isEnabled ? '#22c55e' : 'var(--text-secondary)';
+                }
+                // Refresh only the left list to sync status styling
+                renderMasterList();
+            } catch (err: any) {
+                alert(`Error al actualizar el servicio: ${err.message}`);
+                serviceToggle.checked = !isEnabled;
+            } finally {
+                serviceToggle.disabled = false;
+            }
+        });
+
+        // Event listener: Delete button
+        const deleteBtn = detailContainer.querySelector('#detail-delete-btn') as HTMLButtonElement;
+        deleteBtn.addEventListener('click', async () => {
+            if (confirm(`¿Estás seguro de que deseas eliminar el servicio "${service.name}"?`)) {
+                deleteBtn.disabled = true;
+                deleteBtn.textContent = 'Eliminando...';
+                try {
+                    await deleteService(service.id);
+                    // Clear select and reload
+                    selectedServiceId = null;
+                    await loadServices(true);
+                } catch (err: any) {
+                    alert(`Error al eliminar el servicio: ${err.message}`);
+                    deleteBtn.disabled = false;
+                    deleteBtn.textContent = '🗑️ Eliminar Servicio';
+                }
+            }
+        });
+
+        // Load & check resource associations
+        loadResourceAssociations(service.id, service.name);
+    }
+
+    // Load resources and check which are linked
+    async function loadResourceAssociations(serviceId: string, serviceName: string) {
+        const resListContainer = detailContainer.querySelector('#detail-resource-list') as HTMLElement;
+        const resCountLabel = detailContainer.querySelector('#detail-resources-count') as HTMLElement;
+        
         try {
-            const allResResp   = await getResources();
+            const allResResp = await getResources();
             const allResources = allResResp.data ?? [];
 
             if (allResources.length === 0) {
-                modalLoading.textContent = 'No hay recursos creados en el sistema.';
+                resListContainer.innerHTML = `
+                    <p style="text-align:center; color:var(--text-secondary); padding:1.5rem; font-size:0.85rem; margin:0;">
+                        No hay recursos creados.
+                    </p>
+                `;
+                if (resCountLabel) resCountLabel.textContent = '0 asignados';
                 return;
             }
 
-            // Fan-out: para cada recurso obtenemos sus servicios y vemos si incluye el actual
+            // Fan-out check
             const linkedChecks = await Promise.allSettled(
                 allResources.map(r => getResourceServices(r.id))
             );
@@ -250,53 +525,87 @@ export function renderServiceList(container: HTMLElement): void {
             linkedChecks.forEach((result, i) => {
                 if (result.status === 'fulfilled') {
                     const svcs = result.value?.data ?? [];
-                    // Comprobamos por múltiples campos que Hapio puede usar
                     const isLinked = svcs.some((s: any) => {
                         const sid = s.id ?? s.service_id ?? s.uuid ?? '';
                         return sid === serviceId || s.name === serviceName;
                     });
                     if (isLinked) linkedResourceIds.add(allResources[i].id);
                 } else {
-                    console.warn(`[Modal] Error recursos "${allResources[i].name}":`, (result as any).reason?.message);
+                    console.warn(`[Detail] Error recursos "${allResources[i].name}":`, (result as any).reason?.message);
                 }
             });
 
-            renderModalList(serviceId, serviceName, allResources, linkedResourceIds);
+            // Update associated counter
+            if (resCountLabel) {
+                resCountLabel.textContent = `${linkedResourceIds.size} de ${allResources.length} asignados`;
+            }
 
-            modalLoading.style.display = 'none';
-            modalList.style.display    = 'flex';
+            // Render resources list
+            renderResourceRows(serviceId, allResources, linkedResourceIds, resListContainer, resCountLabel);
+
+            // Enable search filter
+            const searchInput = detailContainer.querySelector('#resource-search') as HTMLInputElement;
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    const query = searchInput.value.toLowerCase().trim();
+                    resListContainer.querySelectorAll<HTMLElement>('.res-assoc-row').forEach(row => {
+                        const name = row.dataset.name!.toLowerCase();
+                        if (name.includes(query)) {
+                            row.style.display = 'flex';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+            }
 
         } catch (err: any) {
-            modalLoading.textContent = `Error al cargar recursos: ${err.message}`;
+            resListContainer.innerHTML = `
+                <div style="color: #f87171; text-align: center; font-size: 0.85rem; padding: 1.5rem;">
+                    Error al cargar recursos: ${err.message}
+                </div>
+            `;
         }
     }
 
-    // ─── Modal: renderizar lista con sliders ──────────────────────────────────
-    function renderModalList(serviceId: string, _serviceName: string, resources: Resource[], linkedIds: Set<string>) {
-        modalList.innerHTML = resources.map(res => {
-            const linked  = linkedIds.has(res.id);
-            const checkId = `res-toggle-${res.id}`;
+    // Render resource list with association switches
+    function renderResourceRows(
+        serviceId: string,
+        resources: Resource[],
+        linkedIds: Set<string>,
+        containerEl: HTMLElement,
+        countLabelEl: HTMLElement
+    ) {
+        containerEl.innerHTML = resources.map(res => {
+            const linked = linkedIds.has(res.id);
+            const checkId = `detail-res-toggle-${res.id}`;
             return `
-                <div id="res-row-${res.id}" style="
-                    display:flex; align-items:center; justify-content:space-between;
-                    gap:1rem; padding:0.85rem 1rem; border-radius:10px;
-                    background:${linked ? 'rgba(34,197,94,0.07)' : 'rgba(255,255,255,0.03)'};
-                    border:1px solid ${linked ? 'rgba(34,197,94,0.25)' : 'var(--border-color)'};
-                    transition:background 0.25s,border-color 0.25s;
+                <div class="res-assoc-row" id="res-row-${res.id}" data-name="${res.name}" style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 1rem;
+                    padding: 0.75rem 0.9rem;
+                    border-radius: 10px;
+                    background: ${linked ? 'rgba(99, 102, 241, 0.05)' : 'rgba(255, 255, 255, 0.02)'};
+                    border: 1px solid ${linked ? 'rgba(99, 102, 241, 0.25)' : 'var(--border-color, rgba(255, 255, 255, 0.08))'};
+                    transition: all 0.2s ease;
                 ">
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-weight:600;font-size:0.9rem;margin-bottom:0.15rem;">${res.name}</div>
-                        <div style="font-size:0.75rem;color:var(--text-secondary);">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; font-size: 0.88rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${res.name}
+                        </div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.1rem;">
                             ${res.enabled ? '🟢 Activo' : '🔴 Inactivo'}
                         </div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:0.6rem;flex-shrink:0;">
+                    <div style="display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0;">
                         <span id="res-label-${res.id}" style="
-                            font-size:0.75rem;font-weight:600;
-                            color:${linked ? '#22c55e' : 'var(--text-secondary)'};
-                            transition:color 0.2s;
-                        ">${linked ? 'Asociado' : 'No asociado'}</span>
-                        <label class="switch" style="margin:0;">
+                            font-size: 0.72rem;
+                            font-weight: 600;
+                            color: ${linked ? '#818cf8' : 'var(--text-secondary)'};
+                        ">${linked ? 'Asignado' : 'No asignado'}</span>
+                        <label class="switch" style="margin: 0;">
                             <input type="checkbox" id="${checkId}"
                                 class="res-assoc-toggle"
                                 data-resource-id="${res.id}"
@@ -308,34 +617,40 @@ export function renderServiceList(container: HTMLElement): void {
             `;
         }).join('');
 
-        // Event listeners para los sliders
-        modalList.querySelectorAll<HTMLInputElement>('.res-assoc-toggle').forEach(toggle => {
+        // Toggles listeners
+        containerEl.querySelectorAll<HTMLInputElement>('.res-assoc-toggle').forEach(toggle => {
             toggle.addEventListener('change', async () => {
-                const resourceId  = toggle.dataset.resourceId!;
+                const resourceId = toggle.dataset.resourceId!;
                 const isNowLinked = toggle.checked;
-                toggle.disabled   = true;
+                toggle.disabled = true;
 
-                const row   = modalList.querySelector(`#res-row-${resourceId}`) as HTMLElement;
-                const label = modalList.querySelector(`#res-label-${resourceId}`) as HTMLElement;
+                const row = containerEl.querySelector(`#res-row-${resourceId}`) as HTMLElement;
+                const label = containerEl.querySelector(`#res-label-${resourceId}`) as HTMLElement;
 
                 try {
                     if (isNowLinked) {
                         await associateResourceService(resourceId, serviceId);
+                        linkedIds.add(resourceId);
                     } else {
                         await removeResourceService(resourceId, serviceId);
+                        linkedIds.delete(resourceId);
                     }
-                    // Actualizar visual sin recargar
+                    
+                    // Instant UI feedback
                     if (row) {
-                        row.style.background  = isNowLinked ? 'rgba(34,197,94,0.07)' : 'rgba(255,255,255,0.03)';
-                        row.style.borderColor = isNowLinked ? 'rgba(34,197,94,0.25)' : 'var(--border-color)';
+                        row.style.background = isNowLinked ? 'rgba(99, 102, 241, 0.05)' : 'rgba(255, 255, 255, 0.02)';
+                        row.style.borderColor = isNowLinked ? 'rgba(99, 102, 241, 0.25)' : 'var(--border-color, rgba(255, 255, 255, 0.08))';
                     }
                     if (label) {
-                        label.textContent = isNowLinked ? 'Asociado' : 'No asociado';
-                        label.style.color = isNowLinked ? '#22c55e' : 'var(--text-secondary)';
+                        label.textContent = isNowLinked ? 'Asignado' : 'No asignado';
+                        label.style.color = isNowLinked ? '#818cf8' : 'var(--text-secondary)';
+                    }
+                    if (countLabelEl) {
+                        countLabelEl.textContent = `${linkedIds.size} de ${resources.length} asignados`;
                     }
                 } catch (err: any) {
-                    alert(`Error al ${isNowLinked ? 'asociar' : 'desasociar'}: ${err.message}`);
-                    toggle.checked = !isNowLinked; // revertir
+                    alert(`Error al cambiar asignación: ${err.message}`);
+                    toggle.checked = !isNowLinked;
                 } finally {
                     toggle.disabled = false;
                 }
@@ -343,5 +658,5 @@ export function renderServiceList(container: HTMLElement): void {
         });
     }
 
-    loadServices();
+    loadServices(true);
 }

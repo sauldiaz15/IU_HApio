@@ -1,4 +1,4 @@
-import { getResources, getLocations, getServices, createRecurringSchedule, RecurringScheduleData } from '../api/hapio';
+import { getResources, getLocations, getServices, createRecurringSchedule, RecurringScheduleData, getResource, updateResource } from '../api/hapio';
 
 export function renderScheduleForm(container: HTMLElement): void {
     container.innerHTML = `
@@ -11,6 +11,12 @@ export function renderScheduleForm(container: HTMLElement): void {
             <form id="schedule-form" class="form">
                 <div class="form-section">
                     <h3>Información del Horario</h3>
+                    
+                    <div class="form-group" style="margin-bottom: 1.25rem;">
+                        <label for="name">Nombre / Etiqueta del Horario</label>
+                        <input type="text" id="name" name="name" placeholder="Ej. Lunes a Viernes - Turno Mañana">
+                        <small class="field-legend">Una etiqueta descriptiva para identificar fácilmente este horario.</small>
+                    </div>
                     
                     <div class="form-grid">
                         <div class="form-group">
@@ -178,6 +184,7 @@ export function renderScheduleForm(container: HTMLElement): void {
 
         const formData   = new FormData(form);
         const resourceId = formData.get('resource') as string;
+        const nameVal    = (formData.get('name') as string) || '';
 
         // Recoger IDs de servicios seleccionados
         const selectedServices = Array.from(
@@ -189,7 +196,7 @@ export function renderScheduleForm(container: HTMLElement): void {
             start_date:  formData.get('start_date') as string,
             end_date:    (formData.get('end_date') as string) || null,
             interval:    parseInt(formData.get('interval') as string) || 1,
-            // Guardar servicios en metadata
+            // Guardar servicios en metadata (para compatibilidad de la API)
             metadata: {
                 services: selectedServices,
             },
@@ -200,7 +207,24 @@ export function renderScheduleForm(container: HTMLElement): void {
             submitBtn.textContent = 'Creando...';
             messageEl.className   = 'message hidden';
 
-            await createRecurringSchedule(resourceId, scheduleData);
+            // 1. Crear el horario recurrente
+            const createdSchedule = await createRecurringSchedule(resourceId, scheduleData);
+
+            // 2. Guardar el nombre/etiqueta en los metadatos del Recurso
+            if (nameVal) {
+                try {
+                    const resource = await getResource(resourceId);
+                    const metadata = resource.metadata || {};
+                    const scheduleNames = metadata.schedule_names || {};
+                    
+                    scheduleNames[createdSchedule.id] = nameVal;
+                    metadata.schedule_names = scheduleNames;
+
+                    await updateResource(resourceId, { metadata });
+                } catch (metaErr) {
+                    console.error('Error al guardar la etiqueta en los metadatos del recurso:', metaErr);
+                }
+            }
 
             messageEl.textContent = '¡Horario recurrente creado con éxito!';
             messageEl.className   = 'message success';

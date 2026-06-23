@@ -3,7 +3,7 @@ import { getLocations, deleteLocation, updateLocation, Location } from '../api/h
 export function renderLocationList(container: HTMLElement): void {
     container.innerHTML = `
     <div class="list-container">
-      <h1>All Locations</h1>
+      <h1>Todas las Localizaciones</h1>
       <div id="locations-status" class="status-message"></div>
       <div id="loading" class="loading-spinner"></div>
       <div id="locations-grid" class="locations-grid"></div>
@@ -27,12 +27,18 @@ export function renderLocationList(container: HTMLElement): void {
 
             if (locations.length === 0) {
                 statusEl.className = 'status-message success';
-                statusEl.innerText = 'No locations found. Create one to get started!';
+                statusEl.innerText = 'No se encontraron localizaciones. ¡Crea una para comenzar!';
                 statusEl.style.display = 'block';
                 return;
             }
 
-            gridEl.innerHTML = locations.map(loc => `
+            gridEl.innerHTML = locations.map(loc => {
+                const addr = loc.metadata?.address;
+                const formattedAddress = addr
+                    ? `${addr.street} ${addr.number}${addr.floor ? `, Piso ${addr.floor}` : ''}${addr.local ? `, Local ${addr.local}` : ''}`
+                    : null;
+
+                return `
         <div class="location-card" data-id="${loc.id}">
           <button class="card-menu-btn" title="Opciones">⋮</button>
           <div class="dropdown-menu">
@@ -41,20 +47,27 @@ export function renderLocationList(container: HTMLElement): void {
             </button>
           </div>
           <div class="location-name">${loc.name}</div>
-          <div class="location-info"><strong>Time Zone:</strong> ${loc.time_zone}</div>
-          <div class="location-info"><strong>Strategy:</strong> ${loc.resource_selection_strategy}</div>
+          <div class="location-info"><strong>Zona Horaria:</strong> ${loc.time_zone}</div>
+          <div class="location-info"><strong>Estrategia:</strong> ${loc.resource_selection_strategy}</div>
           
+          ${formattedAddress ? `
+          <div class="location-info" style="margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px solid rgba(255,255,255,0.05); color: #818cf8; font-size: 0.82rem;">
+            <strong>Dirección:</strong> ${formattedAddress}
+          </div>
+          ` : ''}
+
           <div class="location-status-container">
-            <span class="status-label">${loc.enabled ? 'Enabled' : 'Disabled'}</span>
+            <span class="status-label">${loc.enabled ? 'Habilitado' : 'Deshabilitado'}</span>
             <label class="switch">
               <input type="checkbox" data-action="toggle-status" ${loc.enabled ? 'checked' : ''}>
               <span class="slider"></span>
             </label>
           </div>
 
-          ${loc.id ? `<div class="location-info" style="margin-top: 0.5rem; font-family: monospace; font-size: 0.7rem;">ID: ${loc.id}</div>` : ''}
+          ${loc.id ? `<div class="location-info" style="margin-top: 0.5rem; font-family: monospace; font-size: 0.7rem; color: var(--text-secondary);">ID: ${loc.id}</div>` : ''}
         </div>
-      `).join('');
+      `;
+            }).join('');
 
         } catch (error: any) {
             console.error('Error loading locations:', error);
@@ -140,15 +153,15 @@ export function renderLocationList(container: HTMLElement): void {
                 console.log('Toggling status for', name, 'to', enabled);
 
                 try {
-                    label.innerText = enabled ? 'Enabling...' : 'Disabling...';
+                    label.innerText = enabled ? 'Habilitando...' : 'Deshabilitando...';
                     target.disabled = true;
                     await updateLocation(id, { enabled });
-                    label.innerText = enabled ? 'Enabled' : 'Disabled';
+                    label.innerText = enabled ? 'Habilitado' : 'Deshabilitado';
                     target.disabled = false;
                 } catch (error: any) {
                     console.error('Update status error:', error);
                     target.checked = !enabled;
-                    label.innerText = !enabled ? 'Enabled' : 'Disabled';
+                    label.innerText = !enabled ? 'Habilitado' : 'Deshabilitado';
                     target.disabled = false;
                     statusEl.className = 'status-message error';
                     statusEl.innerText = `Error al actualizar estado de "${name}": ${error.message}`;

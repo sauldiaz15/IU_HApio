@@ -12,6 +12,7 @@ export interface LocationData {
     name: string;
     time_zone: string;
     resource_selection_strategy: ResourceSelectionStrategy;
+    metadata?: Record<string, any>;
 }
 
 export interface Location extends LocationData {
@@ -342,6 +343,18 @@ export async function getResources(): Promise<HapioResponse<Resource[]>> {
     });
 
     return await response.json();
+}
+
+/**
+ * Fetches a single resource from Hapio by ID.
+ */
+export async function getResource(id: string): Promise<Resource> {
+    const response = await fetchWithTimeout(`${BASE_URL}/resources/${id}`, {
+        method: 'GET',
+    });
+
+    const result = await response.json();
+    return result.data || result;
 }
 
 /**

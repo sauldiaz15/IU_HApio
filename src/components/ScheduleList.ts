@@ -1,4 +1,4 @@
-import { getResources, getRecurringSchedules, deleteRecurringSchedule, RecurringSchedule } from '../api/hapio';
+import { getResources, getRecurringSchedules, deleteRecurringSchedule, RecurringSchedule, getResource, updateResource } from '../api/hapio';
 
 export function renderScheduleList(container: HTMLElement): void {
     container.innerHTML = `
@@ -52,8 +52,12 @@ export function renderScheduleList(container: HTMLElement): void {
     async function loadSchedules(resourceId: string) {
         listContent.innerHTML = '<div class="loading-spinner"></div>';
         try {
-            const response = await getRecurringSchedules(resourceId);
+            const [response, resource] = await Promise.all([
+                getRecurringSchedules(resourceId),
+                getResource(resourceId)
+            ]);
             const schedules = response.data;
+            const scheduleNames = resource.metadata?.schedule_names || {};
 
             if (schedules.length === 0) {
                 listContent.innerHTML = `
@@ -66,18 +70,19 @@ export function renderScheduleList(container: HTMLElement): void {
                 return;
             }
 
-            renderTable(schedules, resourceId);
+            renderTable(schedules, resourceId, scheduleNames);
         } catch (error: any) {
             listContent.innerHTML = `<div class="status-message error" style="display: block;">Error al cargar horarios: ${error.message}</div>`;
         }
     }
 
-    function renderTable(schedules: RecurringSchedule[], resourceId: string) {
+    function renderTable(schedules: RecurringSchedule[], resourceId: string, scheduleNames: Record<string, string>) {
         listContent.innerHTML = `
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
+                            <th>Nombre / Etiqueta</th>
                             <th>Localización</th>
                             <th>Fecha Inicio</th>
                             <th>Fecha Fin</th>
@@ -87,13 +92,15 @@ export function renderScheduleList(container: HTMLElement): void {
                     </thead>
                     <tbody>
                         ${schedules.map(sch => {
+            const nameDisplay = scheduleNames[sch.id] || '<span style="color: var(--text-secondary); font-style: italic;">Sin etiqueta</span>';
             const locationName = (sch as any).location?.name || 'Desconocida';
             const endDateDisplay = sch.end_date || 'Indefinido';
             const intervalDisplay = sch.interval === 1 ? 'Cada semana' : `Cada ${sch.interval} semanas`;
 
             return `
                                 <tr>
-                                    <td><strong>${locationName}</strong></td>
+                                    <td><strong>${nameDisplay}</strong></td>
+                                    <td>${locationName}</td>
                                     <td>${sch.start_date}</td>
                                     <td>${endDateDisplay}</td>
                                     <td class="text-center"><span class="badge badge-info">${intervalDisplay}</span></td>
@@ -121,7 +128,21 @@ export function renderScheduleList(container: HTMLElement): void {
                     try {
                         button.disabled = true;
                         button.textContent = '...';
+                        
+                        // 1. Eliminar el horario recurrente de la API
                         await deleteRecurringSchedule(resourceId, scheduleId);
+
+                        // 2. Limpiar el nombre de los metadatos del recurso
+                        try {
+                            const resource = await getResource(resourceId);
+                            if (resource.metadata?.schedule_names) {
+                                delete resource.metadata.schedule_names[scheduleId];
+                                await updateResource(resourceId, { metadata: resource.metadata });
+                            }
+                        } catch (metaErr) {
+                            console.error('Error al limpiar el nombre de los metadatos del recurso:', metaErr);
+                        }
+
                         loadSchedules(resourceId);
                     } catch (error: any) {
                         alert(`Error: ${error.message}`);
