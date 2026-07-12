@@ -3,33 +3,33 @@ import { getResources, getLocations, createScheduleBlock, ScheduleBlockData } fr
 export function renderScheduleBlockForm(container: HTMLElement): void {
     container.innerHTML = `
         <div class="view-header">
-            <h2>Crear Bloque de Horario</h2>
-            <p>Define un periodo de disponibilidad o bloqueo específico para un recurso.</p>
+            <h2>Crear Turno Excepcional</h2>
+            <p>Define un periodo de disponibilidad o bloqueo específico para un especialista.</p>
         </div>
 
         <div class="card">
             <form id="block-form" class="form">
                 <div class="form-section">
-                    <h3>Configuración del Bloque</h3>
+                    <h3>Configuración del Turno Excepcional</h3>
                     
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="resource">Recurso <span class="required-mark">*</span></label>
+                            <label for="resource">Especialista <span class="required-mark">*</span></label>
                             <select id="resource" name="resource" required>
-                                <option value="" disabled selected>Cargando recursos...</option>
+                                <option value="" disabled selected>Cargando especialistas...</option>
                             </select>
                         </div>
 
                         <div class="form-group">
-                            <label for="location_id">Localización <span class="required-mark">*</span></label>
+                            <label for="location_id">Consultorio <span class="required-mark">*</span></label>
                             <select id="location_id" name="location_id" required>
-                                <option value="" disabled selected>Cargando localizaciones...</option>
+                                <option value="" disabled selected>Cargando consultorios...</option>
                             </select>
                         </div>
                     </div>
 
                     <div id="tz-notice" style="display:none; background: var(--surface-2, #1e293b); border-left: 3px solid #6366f1; padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.82rem; color: var(--text-secondary, #94a3b8); margin-bottom: 0.5rem;">
-                        🌐 Las horas se interpretan en la zona horaria de la sede: <strong id="tz-name"></strong>
+                        🌐 Las horas se interpretan en la zona horaria del consultorio: <strong id="tz-name"></strong>
                     </div>
 
                     <div class="form-grid">
@@ -47,7 +47,7 @@ export function renderScheduleBlockForm(container: HTMLElement): void {
                     <div class="toggle-container" style="margin-top: 1rem;">
                         <div class="label-text">
                             <strong>¿Está Disponible?</strong>
-                            <small class="field-legend">Si está desactivado, el recurso estará bloqueado durante este periodo.</small>
+                            <small class="field-legend">Si está desactivado, el especialista estará bloqueado durante este periodo.</small>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="is_available" name="is_available" checked>
@@ -59,7 +59,7 @@ export function renderScheduleBlockForm(container: HTMLElement): void {
                 <div id="form-message" class="message hidden"></div>
     
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Crear Bloque</button>
+                    <button type="submit" class="btn btn-primary">Crear Turno Excepcional</button>
                     <button type="reset" class="btn btn-secondary">Limpiar</button>
                 </div>
             </form>
@@ -142,7 +142,7 @@ export function renderScheduleBlockForm(container: HTMLElement): void {
             const resources = resourcesRes.data;
             const locations = locationsRes.data;
 
-            resourceSelect.innerHTML = '<option value="" disabled selected>Selecciona un recurso</option>';
+            resourceSelect.innerHTML = '<option value="" disabled selected>Selecciona un especialista</option>';
             resources.forEach(r => {
                 const option = document.createElement('option');
                 option.value = r.id;
@@ -150,7 +150,7 @@ export function renderScheduleBlockForm(container: HTMLElement): void {
                 resourceSelect.appendChild(option);
             });
 
-            locationSelect.innerHTML = '<option value="" disabled selected>Selecciona una localización</option>';
+            locationSelect.innerHTML = '<option value="" disabled selected>Selecciona un consultorio</option>';
             locations.forEach(l => {
                 const option = document.createElement('option');
                 option.value = l.id;
@@ -194,8 +194,8 @@ export function renderScheduleBlockForm(container: HTMLElement): void {
             await createScheduleBlock(resourceId, blockData);
 
             messageEl.innerHTML = `
-                ✅ <strong>Bloque de horario creado con éxito.</strong><br>
-                Zona horaria de la sede: <code>${ianaTimezone}</code><br>
+                ✅ <strong>Turno excepcional creado con éxito.</strong><br>
+                Zona horaria del consultorio: <code>${ianaTimezone}</code><br>
                 Inicio: <code>${blockData.starts_at}</code> → Fin: <code>${blockData.ends_at}</code>
             `;
             messageEl.className = 'message success';
@@ -206,7 +206,7 @@ export function renderScheduleBlockForm(container: HTMLElement): void {
             messageEl.className = 'message error';
         } finally {
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Crear Bloque';
+            submitBtn.textContent = 'Crear Turno Excepcional';
         }
     });
 

@@ -4,21 +4,21 @@ export function renderScheduleList(container: HTMLElement): void {
     container.innerHTML = `
         <div class="view-header">
             <h2>Gestión de Horarios Recurrentes</h2>
-            <p>Visualiza y administra los periodos de disponibilidad de tus recursos.</p>
+            <p>Visualiza y administra los periodos de disponibilidad de tus especialistas.</p>
         </div>
 
         <div class="card" style="margin-bottom: 2rem;">
             <div class="form-group" style="margin-bottom: 0;">
-                <label for="resource-filter">Filtrar por Recurso</label>
+                <label for="resource-filter">Filtrar por Especialista</label>
                 <select id="resource-filter" name="resource-filter">
-                    <option value="" disabled selected>Cargando recursos...</option>
+                    <option value="" disabled selected>Cargando especialistas...</option>
                 </select>
             </div>
         </div>
 
         <div id="schedule-list-content">
             <div class="status-message info" style="display: block;">
-                Selecciona un recurso para ver sus horarios.
+                Selecciona un especialista para ver sus horarios.
             </div>
         </div>
     `;
@@ -34,7 +34,7 @@ export function renderScheduleList(container: HTMLElement): void {
             const response = await getResources();
             const resources = response.data;
 
-            resourceFilter.innerHTML = '<option value="" disabled selected>Selecciona un recurso</option>';
+            resourceFilter.innerHTML = '<option value="" disabled selected>Selecciona un especialista</option>';
             resources.forEach(r => {
                 const option = document.createElement('option');
                 option.value = r.id;
@@ -63,7 +63,7 @@ export function renderScheduleList(container: HTMLElement): void {
                 listContent.innerHTML = `
                     <div class="card">
                         <p style="text-align: center; color: #64748b; padding: 2rem;">
-                            No hay horarios recurrentes creados para este recurso.
+                            No hay horarios recurrentes creados para este especialista.
                         </p>
                     </div>
                 `;
@@ -83,7 +83,7 @@ export function renderScheduleList(container: HTMLElement): void {
                     <thead>
                         <tr>
                             <th>Nombre / Etiqueta</th>
-                            <th>Localización</th>
+                            <th>Consultorio</th>
                             <th>Fecha Inicio</th>
                             <th>Fecha Fin</th>
                             <th class="text-center">Intervalo</th>

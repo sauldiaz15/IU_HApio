@@ -4,11 +4,11 @@ export function renderLocationForm(container: HTMLElement): void {
     container.innerHTML = `
     <div class="form-container">
       <h1 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 1.5rem; text-align: center; color: white;">
-        Crear Localización
+        Crear Consultorio
       </h1>
       <form id="location-form">
         <div class="form-group">
-          <label for="name">Nombre de la Sede / Localización</label>
+          <label for="name">Nombre del Consultorio</label>
           <input type="text" id="name" name="name" placeholder="Ej. Consultorio Norte" required maxlength="100">
         </div>
         
@@ -42,7 +42,7 @@ export function renderLocationForm(container: HTMLElement): void {
             align-items: center;
             gap: 0.5rem;
         ">
-            <span>📍</span> Dirección de la Sede (Metadatos)
+            <span>📍</span> Dirección del Consultorio (Metadatos)
         </div>
 
         <div class="form-group">
@@ -77,7 +77,7 @@ export function renderLocationForm(container: HTMLElement): void {
             cursor: pointer;
             transition: all 0.2s ease;
             box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-        ">Crear Localización</button>
+        ">Crear Consultorio</button>
       </form>
       <div id="status-message" class="status-message"></div>
     </div>
@@ -140,7 +140,7 @@ export function renderLocationForm(container: HTMLElement): void {
             console.log('Location created:', result);
 
             statusEl.className = 'status-message success';
-            statusEl.innerText = `¡Éxito! Localización "${result.name}" creada. (ID: ${result.id})`;
+            statusEl.innerText = `¡Éxito! Consultorio "${result.name}" creado. (ID: ${result.id})`;
             form.reset();
         } catch (error: any) {
             console.error('Error:', error);
@@ -148,7 +148,7 @@ export function renderLocationForm(container: HTMLElement): void {
             statusEl.innerText = `Error: ${error.message}`;
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerText = 'Crear Localización';
+            submitBtn.innerText = 'Crear Consultorio';
         }
     });
 }

@@ -1,5 +1,6 @@
 import {
     getResources,
+    getResource,
     getRecurringSchedules,
     createRecurringScheduleBlock,
     Resource,
@@ -41,8 +42,8 @@ export function renderRecurringBlockForm(container: HTMLElement): void {
 
     container.innerHTML = `
         <div class="view-header">
-            <h2>Crear Bloque Recurrente</h2>
-            <p>Configura franjas horarias semanales para un recurso. Cada bloque se repetirá automáticamente.</p>
+            <h2>Crear Turno Recurrente</h2>
+            <p>Configura franjas horarias semanales para un especialista. Cada turno se repetirá automáticamente.</p>
         </div>
 
         <div class="card" style="max-width:860px;">
@@ -50,18 +51,18 @@ export function renderRecurringBlockForm(container: HTMLElement): void {
 
                 <!-- Step 1: Resource & Schedule -->
                 <div class="form-section">
-                    <h3>1 · Recurso y Horario</h3>
+                    <h3>1 · Especialista y Horario</h3>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="rb-resource">Recurso <span class="required-mark">*</span></label>
+                            <label for="rb-resource">Especialista <span class="required-mark">*</span></label>
                             <select id="rb-resource" name="resource" required>
-                                <option value="" disabled selected>Cargando recursos…</option>
+                                <option value="" disabled selected>Cargando especialistas…</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="rb-schedule">Horario Recurrente <span class="required-mark">*</span></label>
                             <select id="rb-schedule" name="schedule" required disabled>
-                                <option value="" disabled selected>Selecciona un recurso primero</option>
+                                <option value="" disabled selected>Selecciona un especialista primero</option>
                             </select>
                         </div>
                     </div>
@@ -71,7 +72,7 @@ export function renderRecurringBlockForm(container: HTMLElement): void {
                 <div class="form-section" style="border-bottom:none;">
                     <h3>2 · Franjas Horarias por Día</h3>
                     <p style="font-size:0.85rem;color:#64748b;margin-top:-0.5rem;margin-bottom:1.25rem;">
-                        Activa los días y define una o más franjas horarias. Cada franja se enviará como un bloque independiente.
+                        Activa los días y define una o más franjas horarias. Cada franja se enviará como un turno independiente.
                     </p>
                     <div id="days-container"></div>
                 </div>
@@ -81,7 +82,7 @@ export function renderRecurringBlockForm(container: HTMLElement): void {
                 <div class="form-actions">
                     <button type="button" id="rb-reset" class="btn btn-secondary">Restablecer</button>
                     <button type="submit" id="rb-submit" class="btn btn-primary">
-                        <span id="rb-submit-text">Guardar Bloques</span>
+                        <span id="rb-submit-text">Guardar Turnos</span>
                     </button>
                 </div>
             </form>
@@ -219,7 +220,7 @@ export function renderRecurringBlockForm(container: HTMLElement): void {
     async function loadResources() {
         try {
             const res = await getResources();
-            resourceSel.innerHTML = '<option value="" disabled selected>Selecciona un recurso</option>';
+            resourceSel.innerHTML = '<option value="" disabled selected>Selecciona un especialista</option>';
             res.data.forEach((r: Resource) => {
                 const opt = document.createElement('option');
                 opt.value = r.id;
@@ -227,7 +228,7 @@ export function renderRecurringBlockForm(container: HTMLElement): void {
                 resourceSel.appendChild(opt);
             });
         } catch (err: any) {
-            showMessage(`Error al cargar recursos: ${err.message}`, 'error');
+            showMessage(`Error al cargar especialistas: ${err.message}`, 'error');
         }
     }
 
@@ -237,16 +238,22 @@ export function renderRecurringBlockForm(container: HTMLElement): void {
         scheduleSel.disabled = true;
         scheduleSel.innerHTML = '<option value="" disabled selected>Cargando horarios…</option>';
         try {
-            const res = await getRecurringSchedules(resourceId);
+            const [res, resource] = await Promise.all([
+                getRecurringSchedules(resourceId),
+                getResource(resourceId)
+            ]);
+            const scheduleNames = resource.metadata?.schedule_names || {};
+
             scheduleSel.innerHTML = '<option value="" disabled selected>Selecciona un horario</option>';
             if (res.data.length === 0) {
                 scheduleSel.innerHTML = '<option value="" disabled selected>Sin horarios recurrentes</option>';
-                showMessage('Este recurso no tiene horarios recurrentes. Crea uno primero en "Crear Horario Semanal".', 'error');
+                showMessage('Este especialista no tiene horarios recurrentes. Crea uno primero en "Crear Horario Semanal".', 'error');
             } else {
                 res.data.forEach((s: RecurringSchedule) => {
                     const opt = document.createElement('option');
                     opt.value = s.id;
-                    opt.textContent = `Horario ${s.id.slice(0, 8)}… (desde ${s.start_date})`;
+                    const name = scheduleNames[s.id] || `Horario ${s.id.slice(0, 8)}…`;
+                    opt.textContent = `${name} (desde ${s.start_date})`;
                     scheduleSel.appendChild(opt);
                 });
                 scheduleSel.disabled = false;
@@ -265,7 +272,7 @@ export function renderRecurringBlockForm(container: HTMLElement): void {
         const scheduleId = scheduleSel.value;
 
         if (!resourceId || !scheduleId) {
-            showMessage('Por favor selecciona un recurso y un horario.', 'error');
+            showMessage('Por favor selecciona un especialista y un horario.', 'error');
             return;
         }
 
@@ -309,14 +316,14 @@ export function renderRecurringBlockForm(container: HTMLElement): void {
         }
 
         submitBtn.disabled = false;
-        submitText.textContent = 'Guardar Bloques';
+        submitText.textContent = 'Guardar Turnos';
 
         if (errors.length === 0) {
-            showMessage(`✓ ${created} bloque${created !== 1 ? 's' : ''} creado${created !== 1 ? 's' : ''} con éxito.`, 'success');
+            showMessage(`✓ ${created} turno${created !== 1 ? 's' : ''} creado${created !== 1 ? 's' : ''} con éxito.`, 'success');
         } else if (created > 0) {
-            showMessage(`⚠ ${created} bloque(s) creados. Errores:\n${errors.join('\n')}`, 'error');
+            showMessage(`⚠ ${created} turno(s) creados. Errores:\n${errors.join('\n')}`, 'error');
         } else {
-            showMessage(`Error al crear bloques:\n${errors.join('\n')}`, 'error');
+            showMessage(`Error al crear turnos:\n${errors.join('\n')}`, 'error');
         }
     });
 

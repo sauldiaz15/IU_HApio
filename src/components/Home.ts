@@ -10,14 +10,14 @@ export function renderHome(container: HTMLElement): void {
             </div>
 
             <p class="welcome-text">
-                Hapio API es una interfaz de programación (API) que sirve para integrar y gestionar sistemas de reservas y programación de citas o recursos dentro de aplicaciones o sitios web.
+                Hapio API es una interfaz de programación (API) que sirve para integrar y gestionar sistemas de reservas y programación de citas o especialistas dentro de aplicaciones o sitios web.
             </p>
 
             <div class="benefits-grid">
                 <div class="benefit-card">
                     <span class="benefit-icon">🤖</span>
                     <h3>Automatizar reservas y citas</h3>
-                    <p>Permite a tus clientes reservar servicios de forma automática y en tiempo real.</p>
+                    <p>Permite a tus clientes reservar especialidades de forma automática y en tiempo real.</p>
                 </div>
 
                 <div class="benefit-card">

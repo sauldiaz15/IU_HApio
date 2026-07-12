@@ -50,8 +50,8 @@ export function renderResourceSchedule(container: HTMLElement): void {
 
     container.innerHTML = `
         <div class="view-header">
-            <h2>Disponibilidad del Recurso</h2>
-            <p>Consulta los tramos horarios disponibles de un recurso en un rango de fechas y localización.</p>
+            <h2>Disponibilidad del Especialista</h2>
+            <p>Consulta los tramos horarios disponibles de un especialista en un rango de fechas y consultorio.</p>
         </div>
 
         <!-- Selector de recurso y localización -->
@@ -59,15 +59,15 @@ export function renderResourceSchedule(container: HTMLElement): void {
             <form id="schedule-filter-form" class="form">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="schedule-resource">Recurso</label>
+                        <label for="schedule-resource">Especialista</label>
                         <select id="schedule-resource" name="resource_id" required>
-                            <option value="">Cargando recursos...</option>
+                            <option value="">Cargando especialistas...</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="schedule-location">Localización</label>
+                        <label for="schedule-location">Consultorio</label>
                         <select id="schedule-location" name="location_id" required>
-                            <option value="">Cargando localizaciones...</option>
+                            <option value="">Cargando consultorios...</option>
                         </select>
                     </div>
                 </div>
@@ -112,11 +112,11 @@ export function renderResourceSchedule(container: HTMLElement): void {
 
             resourceSelect.innerHTML = resResp.data.length
                 ? resResp.data.map(r => `<option value="${r.id}">${r.name}</option>`).join('')
-                : '<option value="">No hay recursos disponibles</option>';
+                : '<option value="">No hay especialistas disponibles</option>';
 
             locationSelect.innerHTML = locResp.data.length
                 ? locResp.data.map(l => `<option value="${l.id}">${l.name}</option>`).join('')
-                : '<option value="">No hay localizaciones disponibles</option>';
+                : '<option value="">No hay consultorios disponibles</option>';
 
         } catch (error) {
             console.error('Error cargando selects:', error);
@@ -149,7 +149,7 @@ export function renderResourceSchedule(container: HTMLElement): void {
             const spans = resp.data;
 
             if (spans.length === 0) {
-                scheduleList.innerHTML = '<p style="color: var(--error);">No hay horarios libres o configurados en este rango de fechas para el recurso seleccionado en esa localización.</p>';
+                scheduleList.innerHTML = '<p style="color: var(--error);">No hay horarios libres o configurados en este rango de fechas para el especialista seleccionado en ese consultorio.</p>';
             } else {
                 scheduleList.innerHTML = spans.map(span =>
                     `<div style="padding:1rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-color);">

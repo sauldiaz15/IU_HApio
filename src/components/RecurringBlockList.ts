@@ -1,5 +1,6 @@
 import {
     getResources,
+    getResource,
     getRecurringSchedules,
     getRecurringScheduleBlocks,
     deleteRecurringScheduleBlock,
@@ -30,22 +31,22 @@ export function renderRecurringBlockList(container: HTMLElement): void {
 
     container.innerHTML = `
         <div class="view-header">
-            <h2>Bloques Recurrentes</h2>
-            <p>Visualiza y administra los bloques de horario semanales de cada horario recurrente.</p>
+            <h2>Turnos Recurrentes</h2>
+            <p>Visualiza y administra los turnos de horario semanales de cada horario recurrente.</p>
         </div>
 
         <div class="card" style="margin-bottom: 2rem;">
             <div class="form-grid">
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label for="rbl-resource">Recurso</label>
+                    <label for="rbl-resource">Especialista</label>
                     <select id="rbl-resource">
-                        <option value="" disabled selected>Cargando recursos…</option>
+                        <option value="" disabled selected>Cargando especialistas…</option>
                     </select>
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
                     <label for="rbl-schedule">Horario Recurrente</label>
                     <select id="rbl-schedule" disabled>
-                        <option value="" disabled selected>Selecciona un recurso primero</option>
+                        <option value="" disabled selected>Selecciona un especialista primero</option>
                     </select>
                 </div>
             </div>
@@ -53,7 +54,7 @@ export function renderRecurringBlockList(container: HTMLElement): void {
 
         <div id="rbl-content">
             <div class="status-message info" style="display: block;">
-                Selecciona un recurso y un horario para ver sus bloques recurrentes.
+                Selecciona un especialista y un horario para ver sus turnos recurrentes.
             </div>
         </div>
     `;
@@ -66,7 +67,7 @@ export function renderRecurringBlockList(container: HTMLElement): void {
     async function loadResources() {
         try {
             const res = await getResources();
-            resourceSel.innerHTML = '<option value="" disabled selected>Selecciona un recurso</option>';
+            resourceSel.innerHTML = '<option value="" disabled selected>Selecciona un especialista</option>';
             res.data.forEach((r: Resource) => {
                 const opt = document.createElement('option');
                 opt.value = r.id;
@@ -74,7 +75,7 @@ export function renderRecurringBlockList(container: HTMLElement): void {
                 resourceSel.appendChild(opt);
             });
         } catch (err: any) {
-            listContent.innerHTML = `<div class="status-message error" style="display:block;">Error al cargar recursos: ${err.message}</div>`;
+            listContent.innerHTML = `<div class="status-message error" style="display:block;">Error al cargar especialistas: ${err.message}</div>`;
         }
     }
 
@@ -83,22 +84,28 @@ export function renderRecurringBlockList(container: HTMLElement): void {
         const resourceId = resourceSel.value;
         scheduleSel.disabled = true;
         scheduleSel.innerHTML = '<option value="" disabled selected>Cargando horarios…</option>';
-        listContent.innerHTML = '<div class="status-message info" style="display:block;">Selecciona un horario para ver sus bloques.</div>';
+        listContent.innerHTML = '<div class="status-message info" style="display:block;">Selecciona un horario para ver sus turnos.</div>';
 
         try {
-            const res = await getRecurringSchedules(resourceId);
+            const [res, resource] = await Promise.all([
+                getRecurringSchedules(resourceId),
+                getResource(resourceId)
+            ]);
+            const scheduleNames = resource.metadata?.schedule_names || {};
+
             scheduleSel.innerHTML = '<option value="" disabled selected>Selecciona un horario</option>';
 
             if (res.data.length === 0) {
                 scheduleSel.innerHTML = '<option value="" disabled selected>Sin horarios recurrentes</option>';
-                listContent.innerHTML = '<div class="status-message info" style="display:block;">Este recurso no tiene horarios recurrentes.</div>';
+                listContent.innerHTML = '<div class="status-message info" style="display:block;">Este especialista no tiene horarios recurrentes.</div>';
                 return;
             }
 
             res.data.forEach((s: RecurringSchedule) => {
                 const opt = document.createElement('option');
                 opt.value = s.id;
-                opt.textContent = `Horario ${s.id.slice(0, 8)}… (desde ${s.start_date})`;
+                const name = scheduleNames[s.id] || `Horario ${s.id.slice(0, 8)}…`;
+                opt.textContent = `${name} (desde ${s.start_date})`;
                 scheduleSel.appendChild(opt);
             });
             scheduleSel.disabled = false;
@@ -128,7 +135,7 @@ export function renderRecurringBlockList(container: HTMLElement): void {
                 listContent.innerHTML = `
                     <div class="card">
                         <p style="text-align:center; color:#64748b; padding:2rem;">
-                            No hay bloques recurrentes para este horario.
+                            No hay turnos recurrentes para este horario.
                         </p>
                     </div>
                 `;
@@ -142,7 +149,7 @@ export function renderRecurringBlockList(container: HTMLElement): void {
 
             renderTable(sorted, resourceId, scheduleId);
         } catch (err: any) {
-            listContent.innerHTML = `<div class="status-message error" style="display:block;">Error al cargar bloques: ${err.message}</div>`;
+            listContent.innerHTML = `<div class="status-message error" style="display:block;">Error al cargar turnos: ${err.message}</div>`;
         }
     }
 
@@ -257,7 +264,7 @@ export function renderRecurringBlockList(container: HTMLElement): void {
         listContent.querySelectorAll<HTMLButtonElement>('.delete-recurring-block').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const blockId = btn.dataset.id!;
-                if (!confirm('¿Eliminar este bloque recurrente?')) return;
+                if (!confirm('¿Eliminar este turno recurrente?')) return;
 
                 btn.disabled = true;
                 btn.textContent = '…';

@@ -37,7 +37,10 @@ export function renderBookingList(container: HTMLElement): void {
         </div>
 
         <div id="booking-list-content">
-            <div class="loading-spinner"></div>
+            <div class="card" style="text-align: center; color: #94a3b8; padding: 2.5rem; border: 1px dashed rgba(168, 85, 247, 0.4); background-color: rgba(168, 85, 247, 0.05);">
+                <p style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; color: #c084fc;">👋 Consulta de Reservaciones</p>
+                <p style="font-size: 0.9rem; max-width: 480px; margin: 0 auto; color: #94a3b8;">Por favor, introduzca los parámetros de búsqueda (fecha o estado) y haga clic en <strong style="color: #c084fc;">Buscar</strong> para consultar la lista de reservaciones.</p>
+            </div>
         </div>
     `;
 
@@ -111,7 +114,7 @@ export function renderBookingList(container: HTMLElement): void {
                             <th>Estado</th>
                             <th>Cliente</th>
                             <th>Motivo</th>
-                            <th class="text-center" style="width: 160px;">Acciones</th>
+                            <th class="text-center" style="width: 200px;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -139,7 +142,7 @@ export function renderBookingList(container: HTMLElement): void {
                                         </button>
                                         ${!isCancelled ? `
                                         <button class="btn btn-danger btn-sm cancel-booking" data-id="${b.id}" title="Cancelar reserva" style="margin-left: 0.25rem;">
-                                            ✕
+                                            ✕ Cancelar
                                         </button>` : '<span style="color:#64748b; font-size:0.8rem; margin-left:0.25rem;">—</span>'}
                                     </td>
                                 </tr>
@@ -203,6 +206,17 @@ export function renderBookingList(container: HTMLElement): void {
         if (filterFrom.value) params['starts_at[gte]'] = new Date(filterFrom.value).toISOString();
         if (filterTo.value) params['starts_at[lte]'] = new Date(filterTo.value + 'T23:59:59').toISOString();
         if (filterStatus.value) params['status'] = filterStatus.value;
+
+        if (Object.keys(params).length === 0) {
+            listContent.innerHTML = `
+                <div class="card" style="text-align: center; color: #94a3b8; padding: 2.5rem; border: 1px dashed rgba(239, 68, 68, 0.4); background-color: rgba(239, 68, 68, 0.05);">
+                    <p style="color: #f87171; font-weight: 600; margin-bottom: 0.5rem;">⚠️ Parámetros de búsqueda requeridos</p>
+                    <p style="font-size: 0.9rem; max-width: 480px; margin: 0 auto; color: #94a3b8;">Por favor, especifique al menos un filtro (fecha de inicio, fecha de fin o estado) antes de buscar.</p>
+                </div>
+            `;
+            return;
+        }
+
         loadBookings(params);
     }
 
@@ -211,8 +225,11 @@ export function renderBookingList(container: HTMLElement): void {
         filterFrom.value = '';
         filterTo.value = '';
         filterStatus.value = '';
-        loadBookings();
+        listContent.innerHTML = `
+            <div class="card" style="text-align: center; color: #94a3b8; padding: 2.5rem; border: 1px dashed rgba(168, 85, 247, 0.4); background-color: rgba(168, 85, 247, 0.05);">
+                <p style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; color: #c084fc;">👋 Consulta de Reservaciones</p>
+                <p style="font-size: 0.9rem; max-width: 480px; margin: 0 auto; color: #94a3b8;">Por favor, introduzca los parámetros de búsqueda (fecha o estado) y haga clic en <strong style="color: #c084fc;">Buscar</strong> para consultar la lista de reservaciones.</p>
+            </div>
+        `;
     });
-
-    loadBookings();
 }

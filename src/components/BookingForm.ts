@@ -36,7 +36,7 @@ export function renderBookingForm(container: HTMLElement): void {
     container.innerHTML = `
         <div class="view-header">
             <h2>Crear Nueva Reserva</h2>
-            <p>Registra una nueva reserva asignando un recurso, servicio y franja horaria.</p>
+            <p>Registra una nueva reserva asignando un especialista, especialidad y franja horaria.</p>
         </div>
 
         <div class="card">
@@ -46,22 +46,22 @@ export function renderBookingForm(container: HTMLElement): void {
                     <h3>Asignación</h3>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="booking-resource">Recurso</label>
+                            <label for="booking-resource">Especialista</label>
                             <select id="booking-resource" name="resource_id" required>
-                                <option value="">Cargando recursos...</option>
+                                <option value="">Cargando especialistas...</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="booking-service">Servicio</label>
+                            <label for="booking-service">Especialidad</label>
                             <select id="booking-service" name="service_id" required disabled>
-                                <option value="">Primero selecciona un recurso</option>
+                                <option value="">Primero selecciona un especialista</option>
                             </select>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="booking-location">Localización</label>
+                        <label for="booking-location">Consultorio</label>
                         <select id="booking-location" name="location_id" required>
-                            <option value="">Cargando localizaciones...</option>
+                            <option value="">Cargando consultorios...</option>
                         </select>
                     </div>
                 </div>
@@ -73,16 +73,22 @@ export function renderBookingForm(container: HTMLElement): void {
                         La hora de fin se calcula automáticamente.
                     </p>
 
-                    <div class="form-group">
+                    <div class="form-group" style="margin-bottom: 1.25rem;">
                         <label for="booking-date">Fecha de la cita</label>
                         <input type="date" id="booking-date" name="booking_date" required min="${todayStr()}">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1.25rem;">
+                        <button type="button" id="btn-search-slots" class="btn btn-secondary btn-sm" style="font-weight: 600; width: 100%; border: 1px dashed var(--primary, #6366f1); color: var(--primary, #6366f1); background: transparent; padding: 0.6rem 1rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(99, 102, 241, 0.08)'" onmouseout="this.style.background='transparent'">
+                            🔍 Buscar turnos disponibles
+                        </button>
                     </div>
 
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="booking-start-time">Hora de Inicio</label>
                             <select id="booking-start-time" name="start_time" required disabled>
-                                <option value="">Completa opciones para ver horas</option>
+                                <option value="">Presiona "Buscar turnos disponibles"</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -147,9 +153,10 @@ export function renderBookingForm(container: HTMLElement): void {
         const date = dateInput.value;
 
         if (!resId || !srvId || !locId || !date) {
-            startTimeSel.innerHTML = '<option value="">Completa recurso, servicio, sede y fecha</option>';
+            startTimeSel.innerHTML = '<option value="">Completa especialista, especialidad, consultorio y fecha</option>';
             startTimeSel.disabled = true;
             endTimeSel.innerHTML = '<option value="">Primero elige inicio</option>';
+            alert('Por favor selecciona especialista, especialidad, consultorio y fecha antes de buscar.');
             return;
         }
 
@@ -173,7 +180,7 @@ export function renderBookingForm(container: HTMLElement): void {
             const spans = resp.data;
 
             if (spans.length === 0) {
-                startTimeSel.innerHTML = '<option value="">Sin turnos (El horario del recurso puede estar cerrado o lleno)</option>';
+                startTimeSel.innerHTML = '<option value="">Sin turnos (El horario del especialista puede estar cerrado o lleno)</option>';
                 return;
             }
 
@@ -225,10 +232,18 @@ export function renderBookingForm(container: HTMLElement): void {
         loadServicesForResource(resourceSelect.value);
     });
 
-    // Servicio, localización y fecha disparan recálculo de slots
-    [serviceSelect, locationSelect, dateInput].forEach(el => {
-        el.addEventListener('change', updateAvailableSlots);
+    // Si cambian campos clave, invalidamos los turnos previos y exigimos buscar de nuevo
+    [resourceSelect, serviceSelect, locationSelect, dateInput].forEach(el => {
+        el.addEventListener('change', () => {
+            startTimeSel.innerHTML = '<option value="">Presiona "Buscar turnos disponibles"</option>';
+            startTimeSel.disabled = true;
+            endTimeSel.innerHTML = '<option value="">Se calculará al elegir inicio</option>';
+        });
     });
+
+    // Botón de búsqueda manual de turnos
+    const btnSearchSlots = container.querySelector('#btn-search-slots') as HTMLButtonElement;
+    btnSearchSlots.addEventListener('click', updateAvailableSlots);
 
     // ─── Auto-relleno de hora fin ─────────────────────────────────────────────
     startTimeSel.addEventListener('change', () => {
@@ -258,26 +273,26 @@ export function renderBookingForm(container: HTMLElement): void {
     form.addEventListener('reset', () => {
         setTimeout(() => {
             endTimeSel.innerHTML = '<option value="">Se calculará al elegir inicio</option>';
-            startTimeSel.innerHTML = '<option value="">Completa opciones para ver horas</option>';
+            startTimeSel.innerHTML = '<option value="">Presiona "Buscar turnos disponibles"</option>';
             startTimeSel.disabled = true;
             dateInput.value = todayStr();
         }, 0);
     });
 
-    // ─── Carga de servicios Y localizaciones según recurso seleccionado ─────────
+    // ─── Carga de servicios Y consultorios según especialista seleccionado ─────────
     async function loadServicesForResource(resourceId: string) {
         serviceSelect.disabled = true;
-        serviceSelect.innerHTML = '<option value="">Cargando servicios...</option>';
+        serviceSelect.innerHTML = '<option value="">Cargando especialidades...</option>';
         locationSelect.disabled = true;
-        locationSelect.innerHTML = '<option value="">Cargando localizaciones...</option>';
+        locationSelect.innerHTML = '<option value="">Cargando consultorios...</option>';
         // Resetear slots al cambiar recurso
         startTimeSel.innerHTML = '<option value="">Completa opciones para ver horas</option>';
         startTimeSel.disabled = true;
         endTimeSel.innerHTML = '<option value="">Se calculará al elegir inicio</option>';
 
         if (!resourceId) {
-            serviceSelect.innerHTML = '<option value="">Primero selecciona un recurso</option>';
-            locationSelect.innerHTML = '<option value="">Primero selecciona un recurso</option>';
+            serviceSelect.innerHTML = '<option value="">Primero selecciona un especialista</option>';
+            locationSelect.innerHTML = '<option value="">Primero selecciona un especialista</option>';
             return;
         }
 
@@ -298,14 +313,14 @@ export function renderBookingForm(container: HTMLElement): void {
             }).filter((s: any) => s?.id && s?.name);
 
             if (services.length) {
-                serviceSelect.innerHTML = '<option value="">-- Seleccionar servicio --</option>' +
+                serviceSelect.innerHTML = '<option value="">-- Seleccionar especialidad --</option>' +
                     services.map((s: any) => `<option value="${s.id}">${s.name}</option>`).join('');
                 serviceSelect.disabled = false;
             } else {
-                serviceSelect.innerHTML = '<option value="">Sin servicios asignados a este recurso</option>';
+                serviceSelect.innerHTML = '<option value="">Sin especialidades asignadas a este especialista</option>';
             }
 
-            // ─ Localizaciones: Hapio embebe el objeto `location` completo en cada schedule ─
+            // ─ Consultorios: Hapio embebe el objeto `location` completo en cada schedule ─
             const locationMap = new Map<string, any>();
             schedulesResp.data.forEach((s: any) => {
                 if (s.location?.id) locationMap.set(s.location.id, s.location);
@@ -313,20 +328,18 @@ export function renderBookingForm(container: HTMLElement): void {
             const resourceLocations = Array.from(locationMap.values());
 
             if (resourceLocations.length) {
-                locationSelect.innerHTML = '<option value="">-- Seleccionar localización --</option>' +
+                locationSelect.innerHTML = '<option value="">-- Seleccionar consultorio --</option>' +
                     resourceLocations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
                 locationSelect.disabled = false;
             } else {
-                locationSelect.innerHTML = '<option value="">Sin localizaciones vinculadas a este recurso</option>';
+                locationSelect.innerHTML = '<option value="">Sin consultorios vinculados a este especialista</option>';
             }
 
         } catch (error: any) {
-            serviceSelect.innerHTML = '<option value="">Error al cargar servicios</option>';
-            locationSelect.innerHTML = '<option value="">Error al cargar localizaciones</option>';
+            serviceSelect.innerHTML = '<option value="">Error al cargar especialidades</option>';
+            locationSelect.innerHTML = '<option value="">Error al cargar consultorios</option>';
             console.error('Error cargando datos del recurso:', error);
         }
-
-        updateAvailableSlots();
     }
 
     // ─── Carga de selectores dinámicos ────────────────────────────────────────
@@ -335,12 +348,16 @@ export function renderBookingForm(container: HTMLElement): void {
             const resResp = await getResources();
 
             if (resResp.data.length) {
-                resourceSelect.innerHTML = resResp.data.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-                // Cargar servicios y localizaciones del primer recurso automáticamente
-                await loadServicesForResource(resResp.data[0].id);
+                resourceSelect.innerHTML = '<option value="" disabled selected>-- Selecciona un especialista --</option>' +
+                    resResp.data.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+                
+                serviceSelect.innerHTML = '<option value="">Primero selecciona un especialista</option>';
+                serviceSelect.disabled = true;
+                locationSelect.innerHTML = '<option value="">Primero selecciona un especialista</option>';
+                locationSelect.disabled = true;
             } else {
-                resourceSelect.innerHTML = '<option value="">No hay recursos disponibles</option>';
-                locationSelect.innerHTML = '<option value="">No hay localizaciones disponibles</option>';
+                resourceSelect.innerHTML = '<option value="">No hay especialistas disponibles</option>';
+                locationSelect.innerHTML = '<option value="">No hay consultorios disponibles</option>';
             }
 
         } catch (error: any) {
@@ -350,8 +367,6 @@ export function renderBookingForm(container: HTMLElement): void {
             messageEl.textContent = `Error al cargar los datos: ${error.message}`;
             messageEl.className = 'message error';
         }
-
-        updateAvailableSlots();
     }
 
     // ─── Submit ───────────────────────────────────────────────────────────────

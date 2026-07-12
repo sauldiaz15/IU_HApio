@@ -3,22 +3,22 @@ import { getResources, getScheduleBlocks, deleteScheduleBlock, ScheduleBlock } f
 export function renderScheduleBlockList(container: HTMLElement): void {
     container.innerHTML = `
         <div class="view-header">
-            <h2>Gestión de Bloques de Horario</h2>
-            <p>Visualiza y administra bloques de tiempo específicos (disponibilidad o bloqueos).</p>
+            <h2>Gestión de Turnos Excepcionales</h2>
+            <p>Visualiza y administra turnos excepcionales de tiempo específicos (disponibilidad o bloqueos).</p>
         </div>
 
         <div class="card" style="margin-bottom: 2rem;">
             <div class="form-group" style="margin-bottom: 0;">
-                <label for="resource-filter">Filtrar por Recurso</label>
+                <label for="resource-filter">Filtrar por Especialista</label>
                 <select id="resource-filter" name="resource-filter">
-                    <option value="" disabled selected>Cargando recursos...</option>
+                    <option value="" disabled selected>Cargando especialistas...</option>
                 </select>
             </div>
         </div>
 
         <div id="block-list-content">
             <div class="status-message info" style="display: block;">
-                Selecciona un recurso para ver sus bloques de horario.
+                Selecciona un especialista para ver sus turnos excepcionales.
             </div>
         </div>
     `;
@@ -34,7 +34,7 @@ export function renderScheduleBlockList(container: HTMLElement): void {
             const response = await getResources();
             const resources = response.data;
 
-            resourceFilter.innerHTML = '<option value="" disabled selected>Selecciona un recurso</option>';
+            resourceFilter.innerHTML = '<option value="" disabled selected>Selecciona un especialista</option>';
             resources.forEach(r => {
                 const option = document.createElement('option');
                 option.value = r.id;
@@ -59,7 +59,7 @@ export function renderScheduleBlockList(container: HTMLElement): void {
                 listContent.innerHTML = `
                     <div class="card">
                         <p style="text-align: center; color: #64748b; padding: 2rem;">
-                            No hay bloques de horario creados para este recurso.
+                            No hay turnos excepcionales creados para este especialista.
                         </p>
                     </div>
                 `;
@@ -68,7 +68,7 @@ export function renderScheduleBlockList(container: HTMLElement): void {
 
             renderTable(blocks, resourceId);
         } catch (error: any) {
-            listContent.innerHTML = `<div class="status-message error" style="display: block;">Error al cargar bloques: ${error.message}</div>`;
+            listContent.innerHTML = `<div class="status-message error" style="display: block;">Error al cargar turnos excepcionales: ${error.message}</div>`;
         }
     }
 
@@ -87,7 +87,7 @@ export function renderScheduleBlockList(container: HTMLElement): void {
                 <table>
                     <thead>
                         <tr>
-                            <th>Localización</th>
+                            <th>Consultorio</th>
                             <th>Inicio</th>
                             <th>Fin</th>
                             <th class="text-center">Estado</th>
@@ -129,7 +129,7 @@ export function renderScheduleBlockList(container: HTMLElement): void {
                 const button = e.currentTarget as HTMLButtonElement;
                 const blockId = button.dataset.id!;
 
-                if (confirm('¿Estás seguro de que deseas eliminar este bloque de horario?')) {
+                if (confirm('¿Estás seguro de que deseas eliminar este turno excepcional?')) {
                     try {
                         button.disabled = true;
                         button.textContent = '...';

@@ -3,7 +3,7 @@ import { getLocations, deleteLocation, updateLocation, Location } from '../api/h
 export function renderLocationList(container: HTMLElement): void {
     container.innerHTML = `
     <div class="list-container">
-      <h1>Todas las Localizaciones</h1>
+      <h1>Todos los Consultorios</h1>
       <div id="locations-status" class="status-message"></div>
       <div id="loading" class="loading-spinner"></div>
       <div id="locations-grid" class="locations-grid"></div>
@@ -27,7 +27,7 @@ export function renderLocationList(container: HTMLElement): void {
 
             if (locations.length === 0) {
                 statusEl.className = 'status-message success';
-                statusEl.innerText = 'No se encontraron localizaciones. ¡Crea una para comenzar!';
+                statusEl.innerText = 'No se encontraron consultorios. ¡Crea uno para comenzar!';
                 statusEl.style.display = 'block';
                 return;
             }
@@ -73,7 +73,7 @@ export function renderLocationList(container: HTMLElement): void {
             console.error('Error loading locations:', error);
             loaderEl.style.display = 'none';
             statusEl.className = 'status-message error';
-            statusEl.innerText = `Error loading locations: ${error.message}`;
+            statusEl.innerText = `Error al cargar consultorios: ${error.message}`;
             statusEl.style.display = 'block';
         }
     }
@@ -115,7 +115,7 @@ export function renderLocationList(container: HTMLElement): void {
 
                 // Minimal delay to ensure menu visual update before blocking UI
                 setTimeout(async () => {
-                    const confirmed = confirm(`¿Estás seguro de que quieres eliminar la localización "${name}"?`);
+                    const confirmed = confirm(`¿Estás seguro de que quieres eliminar el consultorio "${name}"?`);
                     console.log('Delete confirmed:', confirmed);
 
                     if (confirmed) {
@@ -126,7 +126,7 @@ export function renderLocationList(container: HTMLElement): void {
 
                             await deleteLocation(id);
 
-                            statusEl.innerText = `Localización "${name}" eliminada correctamente.`;
+                            statusEl.innerText = `Consultorio "${name}" eliminado correctamente.`;
                             loadLocations();
                         } catch (error: any) {
                             console.error('Delete error:', error);

@@ -377,7 +377,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   padding: 0.75rem 1rem;
   background: rgba(15, 23, 42, 0.5);
@@ -390,7 +391,8 @@ select {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: none;
   border-color: #6366f1;
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);

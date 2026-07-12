@@ -1,4 +1,4 @@
-import { getBookings, updateBooking, cancelBooking, getResources, getServices, getLocations, Booking, associateResourceService } from '../api/hapio';
+import { getBooking, updateBooking, cancelBooking, getResources, getServices, getLocations, Booking } from '../api/hapio';
 
 /** Navega a otra vista usando el evento global definido en main.ts */
 function navigateTo(view: string): void {
@@ -13,26 +13,6 @@ function formatDateTime(iso: string): string {
         weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
         hour: '2-digit', minute: '2-digit'
     });
-}
-
-/** Convierte ISO a valor de datetime-local input (YYYY-MM-DDTHH:MM) */
-function toLocalInput(iso: string): string {
-    if (!iso) return '';
-    const d = new Date(iso);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** Convierte datetime-local input a ISO con offset local */
-function toISOWithOffset(val: string): string {
-    if (!val) return '';
-    const d = new Date(val);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const offsetMin = -d.getTimezoneOffset();
-    const sign = offsetMin >= 0 ? '+' : '-';
-    const absOffset = Math.abs(offsetMin);
-    const tzOffset = `${sign}${pad(Math.floor(absOffset / 60))}:${pad(absOffset % 60)}`;
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${tzOffset}`;
 }
 
 export function renderBookingEdit(container: HTMLElement): void {
@@ -73,9 +53,9 @@ export function renderBookingEdit(container: HTMLElement): void {
             confirmed: 'rgba(34,197,94,0.12)', cancelled: 'rgba(239,68,68,0.12)', temporary: 'rgba(234,179,8,0.12)'
         };
 
-        const resourceName = resources.find(r => r.id === booking.resource_id)?.name || booking.resource_id || '-';
-        const serviceName = services.find(s => s.id === booking.service_id)?.name || booking.service_id || '-';
-        const locationName = locations.find(l => l.id === (booking as any).location_id)?.name || (booking as any).location_id || '-';
+        const resourceName = (booking as any).resource?.name || resources.find(r => r.id === booking.resource_id)?.name || booking.resource_id || '-';
+        const serviceName = (booking as any).service?.name || services.find(s => s.id === booking.service_id)?.name || booking.service_id || '-';
+        const locationName = (booking as any).location?.name || locations.find(l => l.id === (booking as any).location_id)?.name || (booking as any).location_id || '-';
 
         detailArea.innerHTML = `
             <!-- Header de la reserva -->
@@ -128,47 +108,9 @@ export function renderBookingEdit(container: HTMLElement): void {
             ${!isCancelled ? `
             <div class="card">
                 <h3 style="margin-top: 0; margin-bottom: 1.25rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                    ✏️ Editar Información
+                    ✏️ Editar Información del Paciente
                 </h3>
                 <form id="booking-edit-form" class="form">
-
-                    <div class="form-section">
-                        <h3>Asignación</h3>
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="edit-resource">Recurso</label>
-                                <select id="edit-resource" name="resource_id" required>
-                                    ${resources.map(r => `<option value="${r.id}" ${booking.resource_id === r.id ? 'selected' : ''}>${r.name}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="edit-service">Servicio</label>
-                                <select id="edit-service" name="service_id" required>
-                                    ${services.map(s => `<option value="${s.id}" ${booking.service_id === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-location">Localización</label>
-                            <select id="edit-location" name="location_id" required>
-                                ${locations.map(l => `<option value="${l.id}" ${(booking as any).location_id === l.id ? 'selected' : ''}>${l.name}</option>`).join('')}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <h3>Franja Horaria</h3>
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="edit-starts-at">Inicio</label>
-                                <input type="datetime-local" id="edit-starts-at" name="starts_at" value="${toLocalInput(booking.starts_at)}" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="edit-ends-at">Fin</label>
-                                <input type="datetime-local" id="edit-ends-at" name="ends_at" value="${toLocalInput(booking.ends_at)}" required>
-                            </div>
-                        </div>
-                    </div>
 
                     <div class="form-section">
                         <h3>Datos del Paciente</h3>
@@ -247,30 +189,18 @@ export function renderBookingEdit(container: HTMLElement): void {
                 const customerReason = (fd.get('customer_reason') as string).trim();
 
                 const patchData: any = {
-                    resource_id: fd.get('resource_id') as string,
-                    service_id: fd.get('service_id') as string,
-                    location_id: fd.get('location_id') as string,
-                    starts_at: toISOWithOffset(fd.get('starts_at') as string),
-                    ends_at: toISOWithOffset(fd.get('ends_at') as string),
-                    ignore_bookable_slots: true,
+                    customer: {
+                        name: customerName,
+                        email: customerEmail,
+                        phone: customerPhone,
+                        reason: customerReason
+                    }
                 };
-
-                if (customerName || customerEmail || customerPhone || customerReason) {
-                    patchData.customer = {};
-                    if (customerName) patchData.customer.name = customerName;
-                    if (customerEmail) patchData.customer.email = customerEmail;
-                    if (customerPhone) patchData.customer.phone = customerPhone;
-                    if (customerReason) patchData.customer.reason = customerReason;
-                }
 
                 try {
                     editSubmitBtn.disabled = true;
                     editSubmitBtn.textContent = 'Guardando...';
                     editMessage.className = 'message hidden';
-
-                    if (patchData.resource_id && patchData.service_id) {
-                        await associateResourceService(patchData.resource_id, patchData.service_id);
-                    }
 
                     await updateBooking(booking.id, patchData);
 
@@ -300,14 +230,14 @@ export function renderBookingEdit(container: HTMLElement): void {
         `;
 
         try {
-            const [bookingsResp, resResp, svcResp, locResp] = await Promise.all([
-                getBookings(),
+            const [bookingResp, resResp, svcResp, locResp] = await Promise.all([
+                getBooking(bookingId),
                 getResources(),
                 getServices(),
                 getLocations(),
             ]);
 
-            const booking = bookingsResp.data.find(b => b.id === bookingId);
+            const booking = bookingResp.data;
 
             if (!booking) {
                 detailArea.innerHTML = `

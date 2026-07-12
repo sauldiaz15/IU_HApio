@@ -1,10 +1,10 @@
-import { createService, ServiceData, ServiceType } from '../api/hapio';
+import { createService, getServices, ServiceData, ServiceType } from '../api/hapio';
 
 export function renderServiceForm(container: HTMLElement): void {
     container.innerHTML = `
         <div class="view-header">
-            <h2>Crear Nuevo Servicio</h2>
-            <p>Define un servicio que tus clientes podrán reservar.</p>
+            <h2>Crear Nueva Especialidad</h2>
+            <p>Define una especialidad que tus clientes podrán reservar.</p>
         </div>
 
         <div class="card">
@@ -12,12 +12,26 @@ export function renderServiceForm(container: HTMLElement): void {
                 <div class="form-section">
                     <h3>Información General</h3>
                     <div class="form-group">
-                        <label for="name">Nombre del Servicio</label>
-                        <input type="text" id="name" name="name" required placeholder="Ej. Corte de pelo Caballero">
+                        <label for="name">Nombre de la Especialidad</label>
+                        <input type="text" id="name" name="name" required placeholder="Ej. Pediatría">
                     </div>
 
                     <div class="form-group">
-                        <label for="type">Tipo de Servicio</label>
+                        <label for="category">Categoría</label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <select id="category" name="category" style="flex: 1;">
+                                <option value="">-- Selecciona una categoría (Opcional) --</option>
+                            </select>
+                            <button type="button" id="btn-add-category" class="btn btn-secondary" style="padding: 0.75rem 1rem; border-radius: 12px; font-weight: bold; background: rgba(255,255,255,0.05); color: white;">
+                                ➕
+                            </button>
+                        </div>
+                        <small class="field-legend">Selecciona una categoría existente o crea una nueva.</small>
+                    </div>
+
+
+                    <div class="form-group">
+                        <label for="type">Tipo de Especialidad</label>
                         <select id="type" name="type" required>
                             <option value="fixed">Fijo (Duración definida)</option>
                             <option value="flexible">Flexible (Duración variable)</option>
@@ -83,7 +97,7 @@ export function renderServiceForm(container: HTMLElement): void {
                     <div class="form-group">
                         <label for="price">Precio (opcional)</label>
                         <input type="number" id="price" name="price" step="0.001" placeholder="Ej. 25.000">
-                        <small class="field-legend" id="price-legend">Precio fijo por servicio.</small>
+                        <small class="field-legend" id="price-legend">Precio fijo por especialidad.</small>
                     </div>
                 </div>
 
@@ -159,7 +173,7 @@ export function renderServiceForm(container: HTMLElement): void {
 
                 <div class="form-group">
                     <div class="toggle-container">
-                        <span class="label-text">Habilitar servicio</span>
+                        <span class="label-text">Habilitar especialidad</span>
                         <label class="switch">
                             <input type="checkbox" id="enabled" name="enabled" checked>
                             <span class="slider"></span>
@@ -170,7 +184,7 @@ export function renderServiceForm(container: HTMLElement): void {
                 <div id="form-message" class="message hidden"></div>
     
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Crear Servicio</button>
+                    <button type="submit" class="btn btn-primary">Crear Especialidad</button>
                     <button type="reset" class="btn btn-secondary">Limpiar</button>
                 </div>
             </form>
@@ -194,7 +208,7 @@ export function renderServiceForm(container: HTMLElement): void {
 
         if (typeSelect.value === 'fixed') {
             fixedFields.style.display = 'block';
-            priceLegend.textContent = 'Precio fijo por servicio.';
+            priceLegend.textContent = 'Precio fijo por especialidad.';
         } else if (typeSelect.value === 'flexible') {
             flexibleFields.style.display = 'block';
             priceLegend.textContent = 'Precio basado en duración.';
@@ -247,11 +261,16 @@ export function renderServiceForm(container: HTMLElement): void {
         const formData = new FormData(form);
         const type = formData.get('type') as ServiceType;
 
+        const category = (formData.get('category') as string || '').trim();
+
         const serviceData: ServiceData = {
             name: formData.get('name') as string,
             type: type,
             enabled: formData.get('enabled') === 'on',
             price: formData.get('price') ? (parseFloat(formData.get('price') as string)).toFixed(3) : null,
+            metadata: {
+                category: category || undefined
+            },
             // If empty, null triggers automatic calculation (sum of duration + buffers)
             bookable_interval: minutesToISO(formData.get('bookable_interval_min') as string),
             // Buffers default to PT0S (0 minutes)
@@ -291,7 +310,7 @@ export function renderServiceForm(container: HTMLElement): void {
 
             await createService(serviceData);
 
-            messageEl.textContent = '¡Servicio creado con éxito!';
+            messageEl.textContent = '¡Especialidad creada con éxito!';
             messageEl.className = 'message success';
             form.reset();
             // Reset visibility
@@ -302,7 +321,132 @@ export function renderServiceForm(container: HTMLElement): void {
             messageEl.className = 'message error';
         } finally {
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Crear Servicio';
+            submitBtn.textContent = 'Crear Especialidad';
         }
     });
+
+    // Cargar categorías existentes para el select
+    async function loadExistingCategories() {
+        try {
+            const categorySelect = form.querySelector('#category') as HTMLSelectElement;
+            const btnAddCategory = form.querySelector('#btn-add-category') as HTMLButtonElement;
+            
+            const response = await getServices();
+            const categories = new Set<string>();
+            response.data?.forEach((s: any) => {
+                let meta: any = {};
+                if (s.metadata) {
+                    try {
+                        meta = typeof s.metadata === 'string' ? JSON.parse(s.metadata) : s.metadata;
+                    } catch (e) {}
+                }
+                if (meta?.category) {
+                    categories.add(meta.category);
+                }
+            });
+            
+            categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                categorySelect.appendChild(opt);
+            });
+
+            btnAddCategory.addEventListener('click', () => {
+                openAddCategoryModal(categorySelect);
+            });
+        } catch (e) {
+            console.error('Error cargando categorías:', e);
+        }
+    }
+
+    function openAddCategoryModal(selectEl: HTMLSelectElement) {
+        const backdrop = document.createElement('div');
+        backdrop.style.position = 'fixed';
+        backdrop.style.top = '0';
+        backdrop.style.left = '0';
+        backdrop.style.width = '100vw';
+        backdrop.style.height = '100vh';
+        backdrop.style.background = 'rgba(15, 23, 42, 0.8)';
+        backdrop.style.backdropFilter = 'blur(6px)';
+        backdrop.style.display = 'flex';
+        backdrop.style.justifyContent = 'center';
+        backdrop.style.alignItems = 'center';
+        backdrop.style.zIndex = '1100';
+        
+        backdrop.innerHTML = `
+            <div class="card" style="width: 400px; padding: 2rem; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5); border: 1px solid rgba(255,255,255,0.08); background: var(--card-bg, #1e293b);">
+                <h3 style="margin-top: 0; color: white; font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;">Crear Nueva Categoría</h3>
+                <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 1.25rem;">
+                    Ingresa el nombre de la nueva categoría para agrupar especialidades.
+                </p>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="modal-category-name">Nombre de Categoría</label>
+                    <input type="text" id="modal-category-name" placeholder="Ej. Odontología" style="width:100%; box-sizing:border-box;">
+                    <span id="modal-category-error" style="color: #f87171; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></span>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                    <button type="button" id="modal-cancel-btn" class="btn btn-secondary" style="background: rgba(255,255,255,0.05); color: white;">Cancelar</button>
+                    <button type="button" id="modal-save-btn" class="btn btn-primary">Crear</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(backdrop);
+        
+        const input = backdrop.querySelector('#modal-category-name') as HTMLInputElement;
+        const errorEl = backdrop.querySelector('#modal-category-error') as HTMLElement;
+        const cancelBtn = backdrop.querySelector('#modal-cancel-btn') as HTMLButtonElement;
+        const saveBtn = backdrop.querySelector('#modal-save-btn') as HTMLButtonElement;
+        
+        input.focus();
+        
+        const closeModal = () => {
+            document.body.removeChild(backdrop);
+        };
+        
+        cancelBtn.addEventListener('click', closeModal);
+        backdrop.addEventListener('click', (e) => {
+            if (e.target === backdrop) closeModal();
+        });
+        
+        const handleSave = () => {
+            const value = input.value.trim();
+            if (!value) {
+                errorEl.textContent = 'El nombre no puede estar vacío.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            
+            // Check duplication (case-insensitive)
+            let duplicate = false;
+            Array.from(selectEl.options).forEach(opt => {
+                if (opt.value.toLowerCase() === value.toLowerCase()) {
+                    duplicate = true;
+                }
+            });
+            
+            if (duplicate) {
+                errorEl.textContent = 'Esta categoría ya existe.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            
+            // Add to combobox and select it
+            const newOpt = document.createElement('option');
+            newOpt.value = value;
+            newOpt.textContent = value;
+            newOpt.selected = true;
+            selectEl.appendChild(newOpt);
+            
+            closeModal();
+        };
+        
+        saveBtn.addEventListener('click', handleSave);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleSave();
+        });
+    }
+
+    loadExistingCategories();
 }

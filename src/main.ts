@@ -40,15 +40,15 @@ function renderApp(): void {
 
         <div class="menu-item expanded" id="menu-loc">
           <div class="menu-header">
-            <span>Localización</span>
+            <span>Consultorio</span>
             <span class="menu-arrow">▼</span>
           </div>
           <div class="sub-menu">
-          <div class="nav-link active" data-view="list" data-tooltip="Ver y gestionar las sedes físicas">
+          <div class="nav-link active" data-view="list" data-tooltip="Ver y gestionar los consultorios">
               <span class="nav-link-icon">.</span>
-              Ver Localizaciones
+              Ver Consultorios
             </div>
-            <div class="nav-link" data-view="create" data-tooltip="Registrar una nueva sede">
+            <div class="nav-link" data-view="create" data-tooltip="Registrar un nuevo consultorio">
               <span class="nav-link-icon">.</span>
               Crear Nueva
             </div>
@@ -57,38 +57,38 @@ function renderApp(): void {
 
         <div class="menu-item" id="menu-res">
           <div class="menu-header">
-            <span>Recursos</span>
+            <span>Especialistas</span>
             <span class="menu-arrow">▼</span>
           </div>
           <div class="sub-menu">
-            <div class="nav-link" data-view="resources-list" data-tooltip="Listar personal o salas disponibles">
+            <div class="nav-link" data-view="resources-list" data-tooltip="Listar especialistas disponibles">
               <span class="nav-link-icon">.</span>
-              Ver Recursos
+              Ver Especialistas
             </div>
-            <div class="nav-link" data-view="resources-create" data-tooltip="Añadir personal o equipamiento">
+            <div class="nav-link" data-view="resources-create" data-tooltip="Añadir especialista">
               <span class="nav-link-icon">.</span>
-              Crear Nuevo Recurso
+              Crear Nuevo Especialista
             </div>
-            <div class="nav-link" data-view="resources-schedule" data-tooltip="Ver detalles y horarios del recurso">
+            <div class="nav-link" data-view="resources-schedule" data-tooltip="Ver detalles y horarios del especialista">
               <span class="nav-link-icon">.</span>
-              Detalles Del Recurso
+              Detalles Del Especialista
             </div>
           </div>
         </div>
 
         <div class="menu-item" id="menu-ser">
           <div class="menu-header">
-            <span>Servicios</span>
+            <span>Especialidades</span>
             <span class="menu-arrow">▼</span>
           </div>
           <div class="sub-menu">
-            <div class="nav-link" data-view="services-list" data-tooltip="Consultar el catálogo de servicios">
+            <div class="nav-link" data-view="services-list" data-tooltip="Consultar el catálogo de especialidades">
               <span class="nav-link-icon">.</span>
-              Ver Servicios
+              Ver Especialidades
             </div>
-            <div class="nav-link" data-view="services-create" data-tooltip="Definir un nuevo tipo de cita">
+            <div class="nav-link" data-view="services-create" data-tooltip="Definir una nueva especialidad">
               <span class="nav-link-icon">.</span>
-              Nuevo Servicio
+              Nueva Especialidad
             </div>
           </div>
         </div>
@@ -99,11 +99,11 @@ function renderApp(): void {
             <span class="menu-arrow">▼</span>
           </div>
           <div class="sub-menu">
-            <div class="nav-link" data-view="schedules-list" data-tooltip="Lista los horarios semanales creados (Paso 1 de 2). Son el marco que define la sede y el período de vigencia. Deben tener Bloques Recurrentes para generar disponibilidad real.">
+            <div class="nav-link" data-view="schedules-list" data-tooltip="Lista los horarios semanales creados (Paso 1 de 2). Son el marco que define el consultorio y el período de vigencia. Deben tener Turnos Recurrentes para generar disponibilidad real.">
               <span class="nav-link-icon">.</span>
               Ver Horarios Semanales
             </div>
-            <div class="nav-link" data-view="schedules-create" data-tooltip="Crea el marco del horario semanal (Paso 1 de 2): define en qué sede aplica y desde cuándo hasta cuándo estará activo. Luego debes agregarle días y horas en Bloques Recurrentes.">
+            <div class="nav-link" data-view="schedules-create" data-tooltip="Crea el marco del horario semanal (Paso 1 de 2): define en qué consultorio aplica y desde cuándo hasta cuándo estará activo. Luego debes agregarle días y horas en Turnos Recurrentes.">
               <span class="nav-link-icon">.</span>
               Crear Horario Semanal
             </div>
@@ -112,25 +112,25 @@ function renderApp(): void {
 
         <div class="menu-item" id="menu-blo">
           <div class="menu-header">
-            <span>Bloques</span>
+            <span>Turnos</span>
             <span class="menu-arrow">▼</span>
           </div>
           <div class="sub-menu">
-            <div class="nav-link" data-view="blocks-list" data-tooltip="Bloques puntuales para fechas específicas: excepciones al horario habitual, feriados o días especiales con disponibilidad u bloqueo">
+            <div class="nav-link" data-view="blocks-list" data-tooltip="Turnos excepcionales para fechas específicas: excepciones al horario habitual del especialista, feriados o días especiales con disponibilidad o bloqueo">
               <span class="nav-link-icon">.</span>
-               Ver Bloques de Horario
+               Ver Turnos Excepcionales
             </div>
-            <div class="nav-link" data-view="blocks-create" data-tooltip="Crea un bloque para una fecha y hora exacta: bloquear un día de vacaciones, habilitar una consulta especial un sábado, etc.">
+            <div class="nav-link" data-view="blocks-create" data-tooltip="Crea un turno excepcional para una fecha y hora exacta: bloquear un día de vacaciones, habilitar una consulta especial un sábado, etc.">
               <span class="nav-link-icon">.</span>
-               Crear Bloque de Horario
+               Crear Turno Excepcional
             </div>
-            <div class="nav-link" data-view="blocks-recurring-list" data-tooltip="Bloques recurrentes: el horario semanal base del recurso (ej. lunes a viernes de 9am a 6pm). Se repiten automáticamente cada semana">
+            <div class="nav-link" data-view="blocks-recurring-list" data-tooltip="Turnos recurrentes: el horario semanal base del especialista (ej. lunes a viernes de 9am a 6pm). Se repiten automáticamente cada semana">
               <span class="nav-link-icon">.</span>
-               Ver Bloques Recurrentes
+               Ver Turnos Recurrentes
             </div>
-            <div class="nav-link" data-view="blocks-create-recurring" data-tooltip="Define el horario habitual semanal del recurso: qué días trabaja y en qué horario. Se aplica semana a semana automáticamente">
+            <div class="nav-link" data-view="blocks-create-recurring" data-tooltip="Define el horario habitual semanal del especialista: qué días trabaja y en qué horario. Se aplica semana a semana automáticamente">
               <span class="nav-link-icon">.</span>
-               Crear Bloque Recurrente
+               Crear Turno Recurrente
             </div>
           </div>
         </div>
@@ -240,15 +240,24 @@ function renderApp(): void {
   });
 
   // Initial View
-  switchView('dashboard');
+  switchView('home');
 
   // Load project info
   async function loadProjectInfo() {
     const projectInfoEl = app.querySelector('#project-info') as HTMLElement;
+    const cachedProjectName = localStorage.getItem('hapio_project_name');
+    if (cachedProjectName) {
+      projectInfoEl.textContent = cachedProjectName;
+      projectInfoEl.classList.add('loaded');
+      return;
+    }
+
     try {
       const response = await getProject();
       const project = (response as any).data || response;
-      projectInfoEl.textContent = project.name || `ID: ${project.id}`;
+      const projectName = project.name || `ID: ${project.id}`;
+      localStorage.setItem('hapio_project_name', projectName);
+      projectInfoEl.textContent = projectName;
       projectInfoEl.classList.add('loaded');
     } catch (error) {
       console.error('Error fetching project info:', error);

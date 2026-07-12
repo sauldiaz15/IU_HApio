@@ -133,6 +133,25 @@ export interface Booking extends BookingData {
 }
 
 /**
+ * Helper to normalize booking objects from Hapio API response (resolves customer details and status field)
+ */
+function normalizeBooking(b: any): any {
+    if (!b) return b;
+    if (b.metadata && b.metadata.customer) {
+        b.customer = b.metadata.customer;
+    }
+    // Determinar status para la UI basándonos en las banderas de Hapio
+    if (b.is_canceled) {
+        b.status = 'cancelled';
+    } else if (b.is_temporary) {
+        b.status = 'temporary';
+    } else {
+        b.status = 'confirmed';
+    }
+    return b;
+}
+
+/**
  * Fetches the list of bookings from Hapio.
  */
 export async function getBookings(params: Record<string, string> = {}): Promise<HapioResponse<Booking[]>> {
@@ -144,16 +163,27 @@ export async function getBookings(params: Record<string, string> = {}): Promise<
 
     const result = await response.json();
 
-    // Adaptar metadatos para que la UI reciba el objeto \`customer\` si existe
     if (result.data) {
-        result.data.forEach((b: any) => {
-            if (b.metadata && b.metadata.customer) {
-                b.customer = b.metadata.customer;
-            }
-        });
+        result.data.forEach((b: any) => normalizeBooking(b));
     }
 
     return result;
+}
+
+/**
+ * Fetches a single booking by ID from Hapio.
+ */
+export async function getBooking(id: string): Promise<HapioResponse<Booking>> {
+    const response = await fetchWithTimeout(`${BASE_URL}/bookings/${id}`, {
+        method: 'GET',
+    });
+
+    const result = await response.json();
+    const booking = result.data || result;
+
+    return {
+        data: normalizeBooking(booking)
+    };
 }
 
 /**
@@ -162,7 +192,7 @@ export async function getBookings(params: Record<string, string> = {}): Promise<
 export async function createBooking(data: BookingData): Promise<Booking> {
     const payload: any = { ...data };
 
-    // Hapio no admite \`customer\` en la raíz, debe guardarse en \`metadata\`
+    // Hapio no admite `customer` en la raíz, debe guardarse en `metadata`
     if (payload.customer) {
         payload.metadata = { ...payload.metadata, customer: payload.customer };
         delete payload.customer;
@@ -174,7 +204,7 @@ export async function createBooking(data: BookingData): Promise<Booking> {
         body: JSON.stringify(payload),
     });
     const result = await response.json();
-    return result.data || result;
+    return normalizeBooking(result.data || result);
 }
 
 /**
@@ -183,7 +213,7 @@ export async function createBooking(data: BookingData): Promise<Booking> {
 export async function updateBooking(id: string, data: Partial<BookingData>): Promise<Booking> {
     const payload: any = { ...data };
 
-    // Igual que en la creación, mover \`customer\` a \`metadata\`
+    // Igual que en la creación, mover `customer` a `metadata`
     if (payload.customer) {
         payload.metadata = { ...payload.metadata, customer: payload.customer };
         delete payload.customer;
@@ -195,15 +225,17 @@ export async function updateBooking(id: string, data: Partial<BookingData>): Pro
         body: JSON.stringify(payload),
     });
     const result = await response.json();
-    return result.data || result;
+    return normalizeBooking(result.data || result);
 }
 
 /**
  * Cancels a booking in Hapio.
  */
 export async function cancelBooking(id: string): Promise<void> {
-    await fetchWithTimeout(`${BASE_URL}/bookings/${id}/cancel`, {
-        method: 'POST',
+    await fetchWithTimeout(`${BASE_URL}/bookings/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_canceled: true }),
     });
 }
 
