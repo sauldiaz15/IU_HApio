@@ -108,11 +108,31 @@ export function renderResourceSchedule(container: HTMLElement): void {
     // ─── Carga de selects ─────────────────────────────────────────────────────
     async function loadSelects() {
         try {
-            const [resResp, locResp] = await Promise.all([getResources(), getLocations()]);
+            const sessionStr = localStorage.getItem('hapio_portal_session');
+            let isUser = false;
+            let loggedResourceId = '';
+            if (sessionStr) {
+                const session = JSON.parse(sessionStr);
+                if (session.role === 'user' && session.resourceId) {
+                    isUser = true;
+                    loggedResourceId = session.resourceId;
+                }
+            }
 
-            resourceSelect.innerHTML = resResp.data.length
-                ? resResp.data.map(r => `<option value="${r.id}">${r.name}</option>`).join('')
+            const [resResp, locResp] = await Promise.all([getResources(), getLocations()]);
+            let resources = resResp.data;
+
+            if (isUser) {
+                resources = resources.filter(r => r.id === loggedResourceId);
+            }
+
+            resourceSelect.innerHTML = resources.length
+                ? resources.map(r => `<option value="${r.id}" ${isUser ? 'selected' : ''}>${r.name}</option>`).join('')
                 : '<option value="">No hay especialistas disponibles</option>';
+
+            if (isUser) {
+                resourceSelect.disabled = true;
+            }
 
             locationSelect.innerHTML = locResp.data.length
                 ? locResp.data.map(l => `<option value="${l.id}">${l.name}</option>`).join('')

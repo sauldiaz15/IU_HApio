@@ -345,16 +345,38 @@ export function renderBookingForm(container: HTMLElement): void {
     // ─── Carga de selectores dinámicos ────────────────────────────────────────
     async function loadSelects() {
         try {
-            const resResp = await getResources();
+            const sessionStr = localStorage.getItem('hapio_portal_session');
+            let isUser = false;
+            let loggedResourceId = '';
+            if (sessionStr) {
+                const session = JSON.parse(sessionStr);
+                if (session.role === 'user' && session.resourceId) {
+                    isUser = true;
+                    loggedResourceId = session.resourceId;
+                }
+            }
 
-            if (resResp.data.length) {
-                resourceSelect.innerHTML = '<option value="" disabled selected>-- Selecciona un especialista --</option>' +
-                    resResp.data.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-                
-                serviceSelect.innerHTML = '<option value="">Primero selecciona un especialista</option>';
-                serviceSelect.disabled = true;
-                locationSelect.innerHTML = '<option value="">Primero selecciona un especialista</option>';
-                locationSelect.disabled = true;
+            const resResp = await getResources();
+            let resources = resResp.data;
+
+            if (isUser) {
+                resources = resources.filter(r => r.id === loggedResourceId);
+            }
+
+            if (resources.length) {
+                if (isUser) {
+                    resourceSelect.innerHTML = resources.map(r => `<option value="${r.id}" selected>${r.name}</option>`).join('');
+                    resourceSelect.disabled = true;
+                    loadServicesForResource(loggedResourceId);
+                } else {
+                    resourceSelect.innerHTML = '<option value="" disabled selected>-- Selecciona un especialista --</option>' +
+                        resources.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+                    
+                    serviceSelect.innerHTML = '<option value="">Primero selecciona un especialista</option>';
+                    serviceSelect.disabled = true;
+                    locationSelect.innerHTML = '<option value="">Primero selecciona un especialista</option>';
+                    locationSelect.disabled = true;
+                }
             } else {
                 resourceSelect.innerHTML = '<option value="">No hay especialistas disponibles</option>';
                 locationSelect.innerHTML = '<option value="">No hay consultorios disponibles</option>';

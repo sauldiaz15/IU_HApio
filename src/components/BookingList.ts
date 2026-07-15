@@ -207,7 +207,20 @@ export function renderBookingList(container: HTMLElement): void {
         if (filterTo.value) params['starts_at[lte]'] = new Date(filterTo.value + 'T23:59:59').toISOString();
         if (filterStatus.value) params['status'] = filterStatus.value;
 
-        if (Object.keys(params).length === 0) {
+        // Apply access control scoping
+        const sessionStr = localStorage.getItem('hapio_portal_session');
+        let isUser = false;
+        if (sessionStr) {
+            const session = JSON.parse(sessionStr);
+            if (session.role === 'user' && session.resourceId) {
+                params['resource'] = session.resourceId;
+                isUser = true;
+            }
+        }
+
+        // For non-users, we require at least one user-specified filter.
+        // For users (doctors), having their resource ID is enough to trigger a search.
+        if (Object.keys(params).length === 0 || (!isUser && Object.keys(params).length === 0)) {
             listContent.innerHTML = `
                 <div class="card" style="text-align: center; color: #94a3b8; padding: 2.5rem; border: 1px dashed rgba(239, 68, 68, 0.4); background-color: rgba(239, 68, 68, 0.05);">
                     <p style="color: #f87171; font-weight: 600; margin-bottom: 0.5rem;">⚠️ Parámetros de búsqueda requeridos</p>
@@ -225,11 +238,27 @@ export function renderBookingList(container: HTMLElement): void {
         filterFrom.value = '';
         filterTo.value = '';
         filterStatus.value = '';
-        listContent.innerHTML = `
-            <div class="card" style="text-align: center; color: #94a3b8; padding: 2.5rem; border: 1px dashed rgba(168, 85, 247, 0.4); background-color: rgba(168, 85, 247, 0.05);">
-                <p style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; color: #c084fc;">👋 Consulta de Reservaciones</p>
-                <p style="font-size: 0.9rem; max-width: 480px; margin: 0 auto; color: #94a3b8;">Por favor, introduzca los parámetros de búsqueda (fecha o estado) y haga clic en <strong style="color: #c084fc;">Buscar</strong> para consultar la lista de reservaciones.</p>
-            </div>
-        `;
+        
+        const sessionStr = localStorage.getItem('hapio_portal_session');
+        const session = sessionStr ? JSON.parse(sessionStr) : null;
+        if (session && session.role === 'user') {
+            buildParamsAndLoad();
+        } else {
+            listContent.innerHTML = `
+                <div class="card" style="text-align: center; color: #94a3b8; padding: 2.5rem; border: 1px dashed rgba(168, 85, 247, 0.4); background-color: rgba(168, 85, 247, 0.05);">
+                    <p style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; color: #c084fc;">👋 Consulta de Reservaciones</p>
+                    <p style="font-size: 0.9rem; max-width: 480px; margin: 0 auto; color: #94a3b8;">Por favor, introduzca los parámetros de búsqueda (fecha o estado) y haga clic en <strong style="color: #c084fc;">Buscar</strong> para consultar la lista de reservaciones.</p>
+                </div>
+            `;
+        }
     });
+
+    // Auto-load bookings on initialization if logged in as a User
+    const sessionStr = localStorage.getItem('hapio_portal_session');
+    if (sessionStr) {
+        const session = JSON.parse(sessionStr);
+        if (session.role === 'user') {
+            buildParamsAndLoad();
+        }
+    }
 }

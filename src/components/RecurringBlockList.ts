@@ -66,14 +66,37 @@ export function renderRecurringBlockList(container: HTMLElement): void {
     // ── Load resources ────────────────────────────────────────────────────────
     async function loadResources() {
         try {
+            const sessionStr = localStorage.getItem('hapio_portal_session');
+            let isUser = false;
+            let loggedResourceId = '';
+            if (sessionStr) {
+                const session = JSON.parse(sessionStr);
+                if (session.role === 'user' && session.resourceId) {
+                    isUser = true;
+                    loggedResourceId = session.resourceId;
+                }
+            }
+
             const res = await getResources();
-            resourceSel.innerHTML = '<option value="" disabled selected>Selecciona un especialista</option>';
+            resourceSel.innerHTML = '';
+            if (!isUser) {
+                resourceSel.innerHTML = '<option value="" disabled selected>Selecciona un especialista</option>';
+            }
+
             res.data.forEach((r: Resource) => {
+                if (isUser && r.id !== loggedResourceId) return;
                 const opt = document.createElement('option');
                 opt.value = r.id;
                 opt.textContent = r.name;
+                if (isUser) opt.selected = true;
                 resourceSel.appendChild(opt);
             });
+
+            if (isUser) {
+                resourceSel.disabled = true;
+                // Dispatch change event to load schedules
+                resourceSel.dispatchEvent(new Event('change'));
+            }
         } catch (err: any) {
             listContent.innerHTML = `<div class="status-message error" style="display:block;">Error al cargar especialistas: ${err.message}</div>`;
         }

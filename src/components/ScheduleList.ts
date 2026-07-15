@@ -31,16 +31,38 @@ export function renderScheduleList(container: HTMLElement): void {
      */
     async function loadResources() {
         try {
+            const sessionStr = localStorage.getItem('hapio_portal_session');
+            let isUser = false;
+            let loggedResourceId = '';
+            if (sessionStr) {
+                const session = JSON.parse(sessionStr);
+                if (session.role === 'user' && session.resourceId) {
+                    isUser = true;
+                    loggedResourceId = session.resourceId;
+                }
+            }
+
             const response = await getResources();
             const resources = response.data;
 
-            resourceFilter.innerHTML = '<option value="" disabled selected>Selecciona un especialista</option>';
+            resourceFilter.innerHTML = '';
+            if (!isUser) {
+                resourceFilter.innerHTML = '<option value="" disabled selected>Selecciona un especialista</option>';
+            }
+
             resources.forEach(r => {
+                if (isUser && r.id !== loggedResourceId) return;
                 const option = document.createElement('option');
                 option.value = r.id;
                 option.textContent = r.name;
+                if (isUser) option.selected = true;
                 resourceFilter.appendChild(option);
             });
+
+            if (isUser) {
+                resourceFilter.disabled = true;
+                loadSchedules(loggedResourceId);
+            }
         } catch (error: any) {
             listContent.innerHTML = `<div class="status-message error" style="display: block;">Error: ${error.message}</div>`;
         }

@@ -18,10 +18,61 @@ import { renderBookingForm } from './components/BookingForm'
 import { renderBookingList } from './components/BookingList'
 import { renderBookingEdit } from './components/BookingEdit'
 import { getProject } from './api/hapio'
+import { renderLogin, UserSession } from './components/Login'
+import { supabase, isSupabaseConfigured } from './api/supabase'
 
 const app = document.querySelector('#app') as HTMLElement;
 
-function renderApp(): void {
+async function initApp(): Promise<void> {
+  let sessionStr = localStorage.getItem('hapio_portal_session');
+
+  if (isSupabaseConfigured) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        sessionStr = null;
+        localStorage.removeItem('hapio_portal_session');
+      } else {
+        const user = session.user;
+        const metadata = user.user_metadata || {};
+        const role = metadata.role === 'admin' ? 'admin' : 'user';
+        const resourceId = metadata.resource_id || '';
+        const resourceName = metadata.name || user.email || 'Usuario';
+
+        const mappedSession: UserSession = {
+          username: resourceName,
+          role,
+          resourceId: role === 'user' ? resourceId : undefined,
+          resourceName: role === 'user' ? resourceName : undefined
+        };
+        sessionStr = JSON.stringify(mappedSession);
+        localStorage.setItem('hapio_portal_session', sessionStr);
+      }
+    } catch (e) {
+      console.error('Error retrieving Supabase session:', e);
+    }
+  }
+
+  if (!sessionStr) {
+    app.innerHTML = '';
+    renderLogin(app, (session) => {
+      localStorage.setItem('hapio_portal_session', JSON.stringify(session));
+      initApp();
+    });
+    return;
+  }
+
+  try {
+    const session: UserSession = JSON.parse(sessionStr);
+    renderApp(session);
+  } catch (e) {
+    console.error('Error parsing session data, clearing...', e);
+    localStorage.removeItem('hapio_portal_session');
+    initApp();
+  }
+}
+
+function renderApp(session: UserSession): void {
   app.innerHTML = `
     <aside class="sidebar">
       <div class="sidebar-header" data-view="home">
@@ -44,7 +95,7 @@ function renderApp(): void {
             <span class="menu-arrow">▼</span>
           </div>
           <div class="sub-menu">
-          <div class="nav-link active" data-view="list" data-tooltip="Ver y gestionar los consultorios">
+            <div class="nav-link active" data-view="list" data-tooltip="Ver y gestionar los consultorios">
               <span class="nav-link-icon">.</span>
               Ver Consultorios
             </div>
@@ -118,19 +169,19 @@ function renderApp(): void {
           <div class="sub-menu">
             <div class="nav-link" data-view="blocks-list" data-tooltip="Turnos excepcionales para fechas específicas: excepciones al horario habitual del especialista, feriados o días especiales con disponibilidad o bloqueo">
               <span class="nav-link-icon">.</span>
-               Ver Turnos Excepcionales
+              Ver Turnos Excepcionales
             </div>
             <div class="nav-link" data-view="blocks-create" data-tooltip="Crea un turno excepcional para una fecha y hora exacta: bloquear un día de vacaciones, habilitar una consulta especial un sábado, etc.">
               <span class="nav-link-icon">.</span>
-               Crear Turno Excepcional
+              Crear Turno Excepcional
             </div>
             <div class="nav-link" data-view="blocks-recurring-list" data-tooltip="Turnos recurrentes: el horario semanal base del especialista (ej. lunes a viernes de 9am a 6pm). Se repiten automáticamente cada semana">
               <span class="nav-link-icon">.</span>
-               Ver Turnos Recurrentes
+              Ver Turnos Recurrentes
             </div>
             <div class="nav-link" data-view="blocks-create-recurring" data-tooltip="Define el horario habitual semanal del especialista: qué días trabaja y en qué horario. Se aplica semana a semana automáticamente">
               <span class="nav-link-icon">.</span>
-               Crear Turno Recurrente
+              Crear Turno Recurrente
             </div>
           </div>
         </div>
@@ -152,6 +203,18 @@ function renderApp(): void {
           </div>
         </div>
       </nav>
+
+      <div class="sidebar-footer" style="padding: 1rem 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.05); display: flex; flex-direction: column; gap: 0.75rem;">
+        <div style="font-size: 0.8rem; color: #94a3b8; display: flex; flex-direction: column; gap: 0.15rem;">
+          <span style="font-weight: 600; color: #e2e8f0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${session.username}">👤 ${session.username}</span>
+          <span style="font-size: 0.7rem; color: #a855f7; font-weight: 600;">
+            ${session.role === 'admin' ? '⚙️ Administrador' : '👤 Usuario'}
+          </span>
+        </div>
+        <button id="btn-logout" class="btn-danger btn-sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+          <span>🚪</span> Cerrar Sesión
+        </button>
+      </div>
     </aside>
     
     <main class="main-content">
@@ -163,6 +226,7 @@ function renderApp(): void {
   const navLinks = app.querySelectorAll<HTMLElement>('.nav-link');
   const menuItems = app.querySelectorAll<HTMLElement>('.menu-item');
   const sidebarHeader = app.querySelector('.sidebar-header') as HTMLElement;
+  const btnLogout = app.querySelector('#btn-logout') as HTMLButtonElement;
 
   // Sidebar header link
   sidebarHeader.addEventListener('click', () => switchView('home'));
@@ -175,7 +239,70 @@ function renderApp(): void {
     });
   });
 
+  // Logout listener
+  btnLogout.addEventListener('click', async () => {
+    if (confirm('¿Deseas cerrar la sesión del portal?')) {
+      if (isSupabaseConfigured) {
+        try {
+          await supabase.auth.signOut();
+        } catch (e) {
+          console.error('Error logging out from Supabase:', e);
+        }
+      }
+      localStorage.removeItem('hapio_portal_session');
+      initApp();
+    }
+  });
+
+  // Role restrictions on sidebar visibility
+  if (session.role === 'user') {
+    // Hide administrative sections completely
+    const locMenu = app.querySelector('#menu-loc') as HTMLElement;
+    if (locMenu) locMenu.style.display = 'none';
+
+    const resMenu = app.querySelector('#menu-res') as HTMLElement;
+    if (resMenu) {
+      // Specialist can see "Detalles del Especialista" (availability), so keep the menu but hide list/create
+      const listLnk = resMenu.querySelector('[data-view="resources-list"]') as HTMLElement;
+      if (listLnk) listLnk.style.display = 'none';
+      const createLnk = resMenu.querySelector('[data-view="resources-create"]') as HTMLElement;
+      if (createLnk) createLnk.style.display = 'none';
+    }
+
+    const serMenu = app.querySelector('#menu-ser') as HTMLElement;
+    if (serMenu) serMenu.style.display = 'none';
+
+    // Hide creation links in Horarios & Turnos
+    const schCreate = app.querySelector('[data-view="schedules-create"]') as HTMLElement;
+    if (schCreate) schCreate.style.display = 'none';
+
+    const bloCreate = app.querySelector('[data-view="blocks-create"]') as HTMLElement;
+    if (bloCreate) bloCreate.style.display = 'none';
+
+    const bloCreateRec = app.querySelector('[data-view="blocks-create-recurring"]') as HTMLElement;
+    if (bloCreateRec) bloCreateRec.style.display = 'none';
+  }
+
   function switchView(viewName: string): void {
+    // Route guard for user
+    if (session.role === 'user') {
+      const disallowedViews = [
+        'list',
+        'create',
+        'resources-list',
+        'resources-create',
+        'services-list',
+        'services-create',
+        'schedules-create',
+        'blocks-create',
+        'blocks-create-recurring'
+      ];
+      if (disallowedViews.includes(viewName)) {
+        switchView('home');
+        return;
+      }
+    }
+
     // Update active state in sidebar
     navLinks.forEach(link => {
       if (link.dataset.view === viewName) {
@@ -268,4 +395,4 @@ function renderApp(): void {
   loadProjectInfo();
 }
 
-renderApp();
+initApp();
