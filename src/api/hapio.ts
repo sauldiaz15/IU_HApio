@@ -249,7 +249,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise
     const id = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
 
     try {
-        const headers: Record<string, string> = {
+        const headers: any = {
             'Accept': 'application/json',
             ...options.headers,
         };
