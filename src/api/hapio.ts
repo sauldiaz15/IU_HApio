@@ -2,8 +2,10 @@
  * Hapio API Service
  */
 
-const API_KEY = import.meta.env.VITE_HAPIO_API_KEY;
-const BASE_URL = import.meta.env.VITE_HAPIO_BASE_URL;
+const API_KEY = import.meta.env.VITE_HAPIO_API_KEY || '';
+const BASE_URL = import.meta.env.DEV 
+    ? (import.meta.env.VITE_HAPIO_BASE_URL || '/api') 
+    : '/api';
 const DEFAULT_TIMEOUT = 10000; // 10 seconds
 
 export type ResourceSelectionStrategy = 'randomize' | 'prioritize' | 'equalize';
@@ -247,14 +249,20 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise
     const id = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
 
     try {
+        const headers: Record<string, string> = {
+            'Accept': 'application/json',
+            ...options.headers,
+        };
+
+        // Solo enviamos Authorization si tenemos la clave localmente y no estamos usando el proxy
+        if (API_KEY && !url.startsWith('/api')) {
+            headers['Authorization'] = `Bearer ${API_KEY}`;
+        }
+
         const response = await fetch(url, {
             ...options,
             signal: controller.signal,
-            headers: {
-                'Authorization': `Bearer ${API_KEY}`,
-                'Accept': 'application/json',
-                ...options.headers,
-            },
+            headers,
         });
         clearTimeout(id);
 
